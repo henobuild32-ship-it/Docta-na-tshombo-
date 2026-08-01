@@ -71,15 +71,15 @@
       <span>Docta na Tshombo <small style="opacity:0.8; font-weight:400;">v1.4 Web</small></span>
     </a>
 
-    <div style="display:flex; align-items:center; gap:16px;">
+    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
       <div id="user-role-display" class="role-badge">PATIENT</div>
-      <span id="header-user-name" style="font-weight:600; font-size:0.9rem; color:#EAF1EC;"></span>
+      <span id="header-user-name" style="font-weight:600; font-size:0.85rem; color:#EAF1EC;"></span>
 
-      <button id="auth-btn" onclick="openAuthModal()" class="btn btn-secondary btn-sm" style="padding:6px 14px;">
+      <button id="auth-btn" onclick="openAuthModal()" class="btn btn-secondary btn-sm" style="padding:6px 14px; font-size:0.85rem;">
         🔑 Connexion / Inscription
       </button>
 
-      <button id="logout-btn" onclick="handleLogout()" class="btn btn-ghost btn-sm" style="color:white; border-color:rgba(255,255,255,0.4); display:none;">
+      <button id="logout-btn" onclick="handleLogout()" class="btn btn-ghost btn-sm" style="color:white; border-color:rgba(255,255,255,0.4); display:none; padding:6px 14px; font-size:0.85rem;">
         🚪 Déconnexion
       </button>
 
@@ -136,7 +136,7 @@
         </div>
 
         <div id="doctors-list-grid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(300px, 1fr)); gap:20px;">
-          <!-- Dynamically filled via JS -->
+          <!-- Dynamically filled via JS from Firestore -->
         </div>
       </div>
 
@@ -146,7 +146,7 @@
         <p style="color:#718096; margin-bottom:20px;">Historique et consultations à venir.</p>
         
         <div id="patient-appointments-list" style="display:flex; flex-direction:column; gap:12px;">
-          <!-- Dynamically filled -->
+          <!-- Dynamically filled via JS from Firestore -->
         </div>
       </div>
 
@@ -189,11 +189,11 @@
 
         <div class="chat-box">
           <div style="padding:14px; border-bottom:1px solid #E2E8F0; background:#F7FAFC; border-radius:16px 16px 0 0; display:flex; justify-content:space-between; align-items:center;">
-            <strong id="p-chat-doc-name">Dr. Kabange Mwangele (Cardiologue)</strong>
+            <strong id="p-chat-doc-name">💬 Conversation Médicale</strong>
             <span class="pulse-dot online"></span>
           </div>
           <div id="p-chat-messages" class="chat-messages">
-            <!-- Messages dynamic -->
+            <!-- Messages loaded dynamically from Firestore -->
           </div>
           <div style="padding:12px; border-top:1px solid #E2E8F0; display:flex; gap:10px;">
             <input type="text" id="p-chat-input" placeholder="Rédiger un message..." style="flex:1; padding:10px 16px; border-radius:999px; border:1px solid #CBD5E0;" />
@@ -244,23 +244,18 @@
         <div class="stats-grid">
           <div class="stat-card">
             <span style="color:#718096;">Consultations du jour</span>
-            <div id="d-stat-today" class="stat-val">8 Consultations</div>
-            <small style="color:#38A169;">3 Téléconsultations • 5 Présentiel</small>
+            <div id="d-stat-today" class="stat-val">0 Consultation</div>
+            <small id="d-stat-today-sub" style="color:#38A169;">Données en direct</small>
           </div>
           <div class="stat-card">
-            <span style="color:#718096;">Patients en attente</span>
-            <div id="d-stat-waiting" class="stat-val">2 Patients</div>
-            <small style="color:#DD6B20;">Temps moyen: 12 min</small>
+            <span style="color:#718096;">Patients suivis</span>
+            <div id="d-stat-total-patients" class="stat-val">0 Patient</div>
+            <small style="color:#805AD5;">Base Patients Firestore</small>
           </div>
           <div class="stat-card">
-            <span style="color:#718096;">Taux d'occupation</span>
-            <div id="d-stat-occupancy" class="stat-val">85 %</div>
-            <small style="color:#3182CE;">12 Créneaux réservés sur 14</small>
-          </div>
-          <div class="stat-card">
-            <span style="color:#718096;">Patients total suivis</span>
-            <div id="d-stat-total-patients" class="stat-val">42 Patients</div>
-            <small style="color:#805AD5;">+4 ce mois-ci</small>
+            <span style="color:#718096;">Cabinet</span>
+            <div class="stat-val" style="font-size:1.4rem;">Ouvert</div>
+            <small style="color:#3182CE;">Prise de RDV active</small>
           </div>
         </div>
 
@@ -270,14 +265,10 @@
             <div id="d-upcoming-rdv-list" style="margin-top:12px; display:flex; flex-direction:column; gap:10px;"></div>
           </div>
           <div class="stat-card">
-            <h3>Alertes Médicales & Retards</h3>
-            <div style="margin-top:12px; display:flex; flex-direction:column; gap:10px;">
-              <div style="padding:10px; background:#FFF5F5; border-left:4px solid #E53E3E; border-radius:6px;">
-                <strong>Jean K. (26 ans)</strong> — Retard 15 min (Présentiel)
-              </div>
-              <div style="padding:10px; background:#FEFCBF; border-left:4px solid #D69E2E; border-radius:6px;">
-                <strong>Alerte constantes :</strong> Marie T. SpO2 94% mesuré aujourd'hui.
-              </div>
+            <h3>Information Cabinet & Profil</h3>
+            <div style="margin-top:12px; color:#4A5568; font-size:0.95rem; line-height:1.6;">
+              <p>📍 Votre profil est visible par tous les patients.</p>
+              <p>⚡ Assurez-vous que vos horaires et spécialités sont à jour.</p>
             </div>
           </div>
         </div>
@@ -287,7 +278,6 @@
       <div id="tab-d-agenda" class="app-tab" style="display:none;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
           <h2>Agenda & Consultations</h2>
-          <button onclick="openAddConsultationModal()" class="btn btn-primary btn-sm">+ Ajouter une consultation</button>
         </div>
         <div id="doctor-agenda-list" style="display:flex; flex-direction:column; gap:12px;"></div>
       </div>
@@ -295,7 +285,7 @@
       <!-- Practitioner Patients Management -->
       <div id="tab-d-patients" class="app-tab" style="display:none;">
         <h2>👥 Carnet de Patients</h2>
-        <p style="color:#718096; margin-bottom:20px;">Recherche, dossiers médicaux, historiques et antécédents.</p>
+        <p style="color:#718096; margin-bottom:20px;">Recherche, dossiers médicaux et historiques.</p>
         <div id="doctor-patients-list" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(300px, 1fr)); gap:16px;"></div>
       </div>
 
@@ -308,28 +298,21 @@
           <div class="stat-card">
             <h3>Information Prescription</h3>
             <div style="display:flex; flex-direction:column; gap:12px; margin-top:14px;">
-              <label>Nom du Patient:
+              <label>Sélectionner le Patient:
                 <select id="presc-patient-select" style="width:100%; padding:10px; border-radius:8px; border:1px solid #CBD5E0; margin-top:4px;">
-                  <option value="Jean Mukendi">Jean Mukendi (34 ans)</option>
-                  <option value="Marie Tshilombo">Marie Tshilombo (28 ans)</option>
-                  <option value="Paul Kande">Paul Kande (52 ans)</option>
+                  <option value="">Sélectionnez un patient...</option>
                 </select>
               </label>
               <label>Diagnostic / Motif:
-                <input type="text" id="presc-diag" value="Grippe saisonnière / Fièvre" style="width:100%; padding:10px; border-radius:8px; border:1px solid #CBD5E0; margin-top:4px;" />
+                <input type="text" id="presc-diag" placeholder="ex: Consultation générale, Fièvre..." style="width:100%; padding:10px; border-radius:8px; border:1px solid #CBD5E0; margin-top:4px;" />
               </label>
 
               <h4>Médicaments Prescrits:</h4>
               <div id="presc-meds-container" style="display:flex; flex-direction:column; gap:8px;">
                 <div style="display:flex; gap:8px;">
-                  <input type="text" class="p-med-name" placeholder="Médicament" value="Paracétamol 1g" style="flex:2; padding:8px; border-radius:6px; border:1px solid #CBD5E0;" />
-                  <input type="text" class="p-med-poso" placeholder="Posologie" value="1 comp 3x/jour" style="flex:1; padding:8px; border-radius:6px; border:1px solid #CBD5E0;" />
-                  <input type="text" class="p-med-dur" placeholder="Durée" value="5 jours" style="flex:1; padding:8px; border-radius:6px; border:1px solid #CBD5E0;" />
-                </div>
-                <div style="display:flex; gap:8px;">
-                  <input type="text" class="p-med-name" placeholder="Médicament" value="Amoxicilline 1g" style="flex:2; padding:8px; border-radius:6px; border:1px solid #CBD5E0;" />
-                  <input type="text" class="p-med-poso" placeholder="Posologie" value="1 comp 2x/jour" style="flex:1; padding:8px; border-radius:6px; border:1px solid #CBD5E0;" />
-                  <input type="text" class="p-med-dur" placeholder="Durée" value="7 jours" style="flex:1; padding:8px; border-radius:6px; border:1px solid #CBD5E0;" />
+                  <input type="text" class="p-med-name" placeholder="Médicament (ex: Paracétamol 1g)" style="flex:2; padding:8px; border-radius:6px; border:1px solid #CBD5E0;" />
+                  <input type="text" class="p-med-poso" placeholder="Posologie" style="flex:1; padding:8px; border-radius:6px; border:1px solid #CBD5E0;" />
+                  <input type="text" class="p-med-dur" placeholder="Durée" style="flex:1; padding:8px; border-radius:6px; border:1px solid #CBD5E0;" />
                 </div>
               </div>
               <button onclick="addPrescMedRow()" class="btn btn-ghost btn-sm" style="align-self:flex-start;">+ Ajouter un médicament</button>

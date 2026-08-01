@@ -1,4 +1,4 @@
-const CACHE = "docta-tshombo-v1.4.0";
+const CACHE = "docta-tshombo-v1.6.0";
 const PRECACHE = [
   "./",
   "./index.html",

@@ -136,6 +136,7 @@
     if (tabId === "d-dashboard") loadDoctorDashboardFromFirestore();
     if (tabId === "d-agenda") loadDoctorAgendaFromFirestore();
     if (tabId === "d-patients") loadDoctorPatientsFromFirestore();
+    if (tabId === "d-prescription") loadDoctorPatientsFromFirestore();
     if (tabId === "d-messages") initChatMessages();
   };
 
@@ -661,14 +662,26 @@
 
   async function loadDoctorPatientsFromFirestore() {
     const list = document.getElementById("doctor-patients-list");
-    if (!list || !currentUser) return;
-
-    list.innerHTML = `<p style="color:#718096;">⏳ Chargement du carnet de patients...</p>`;
+    const prescSelect = document.getElementById("presc-patient-select");
 
     try {
       const snap = await db.collection("users").where("role", "==", "patient").get();
       let patients = [];
       snap.forEach(doc => patients.push({ id: doc.id, ...doc.data() }));
+
+      if (prescSelect) {
+        if (patients.length === 0) {
+          prescSelect.innerHTML = `<option value="">Aucun patient enregistré</option>`;
+        } else {
+          prescSelect.innerHTML = `<option value="">Sélectionnez un patient...</option>` +
+            patients.map(p => {
+              const name = ((p.firstName || '') + ' ' + (p.lastName || '')).trim() || p.email;
+              return `<option value="${name}">${name}</option>`;
+            }).join('');
+        }
+      }
+
+      if (!list) return;
 
       if (patients.length === 0) {
         list.innerHTML = `<p style="color:#718096;">Aucun patient enregistré dans le système.</p>`;
@@ -684,7 +697,7 @@
         </div>
       `).join('');
     } catch (e) {
-      list.innerHTML = `<p style="color:#E53E3E;">Erreur : ${e.message}</p>`;
+      if (list) list.innerHTML = `<p style="color:#E53E3E;">Erreur : ${e.message}</p>`;
     }
   }
 
