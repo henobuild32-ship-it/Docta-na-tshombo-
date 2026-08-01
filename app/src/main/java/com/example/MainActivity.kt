@@ -154,7 +154,8 @@ class MainActivity : ComponentActivity() {
                                         viewModel.navigateTo(AppScreen.PRO_CONSULTATION)
                                     },
                                     onNavigateToMessaging = { viewModel.navigateTo(AppScreen.MESSAGING) },
-                                    isSeniorMode = isSeniorMode
+                                    isSeniorMode = isSeniorMode,
+                                    onLogout = { viewModel.logout() }
                                 )
                             }
 
