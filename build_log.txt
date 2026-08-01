@@ -1,0 +1,70 @@
+﻿Initialized native services in: C:\Users\user\.gradle\native
+Initialized jansi services in: C:\Users\user\.gradle\native
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.3.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Starting process 'Gradle build daemon'. Working directory: C:\Users\user\.gradle\daemon\9.3.1 Command: C:\Users\user\AppData\Local\Java\jdk-21.0.11\bin\java.exe --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.lang.invoke=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.prefs/java.util.prefs=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.prefs/java.util.prefs=ALL-UNNAMED --add-opens=java.base/java.nio.charset=ALL-UNNAMED --add-opens=java.base/java.net=ALL-UNNAMED --add-opens=java.base/java.util.concurrent=ALL-UNNAMED --add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED --add-opens=java.xml/javax.xml.namespace=ALL-UNNAMED --add-opens=java.base/java.time=ALL-UNNAMED -Xmx4g -Dfile.encoding=UTF-8 -Duser.country=CD -Duser.language=fr -Duser.variant -cp C:\Users\user\.gradle\wrapper\dists\gradle-9.3.1-bin\23ovyewtku6u96viwx3xl3oks\gradle-9.3.1\lib\gradle-daemon-main-9.3.1.jar -javaagent:C:\Users\user\.gradle\wrapper\dists\gradle-9.3.1-bin\23ovyewtku6u96viwx3xl3oks\gradle-9.3.1\lib\agents\gradle-instrumentation-agent-9.3.1.jar org.gradle.launcher.daemon.bootstrap.GradleDaemon 9.3.1
+Successfully started process 'Gradle build daemon'
+An attempt to start the daemon took 1.169 secs.
+#
+# There is insufficient memory for the Java Runtime Environment to continue.
+# Native memory allocation (malloc) failed to allocate 356592 bytes for Chunk::new
+# An error report file with more information is saved as:
+# C:\360\Docta-na-tshombo-main\hs_err_pid20992.log
+[thread 264 also had an error]
+
+
+
+* What went wrong:
+Unable to start the daemon process.
+This problem might be caused by incorrect 
+configuration of the daemon.
+For example, an unrecognized jvm option is 
+used.For more details on the daemon, please 
+refer to https://docs.gradle.org/9.3.1/usergui
+de/gradle_daemon.html in the Gradle 
+documentation.
+Process command line: C:\Users\user\AppData\Lo
+cal\Java\jdk-21.0.11\bin\java.exe 
+--add-opens=java.base/java.lang=ALL-UNNAMED --
+add-opens=java.base/java.lang.invoke=ALL-UNNAM
+ED 
+--add-opens=java.base/java.util=ALL-UNNAMED --
+add-opens=java.prefs/java.util.prefs=ALL-UNNAM
+ED --add-exports=jdk.compiler/com.sun.tools.ja
+vac.api=ALL-UNNAMED --add-exports=jdk.compiler
+/com.sun.tools.javac.util=ALL-UNNAMED 
+--add-opens=java.base/java.util=ALL-UNNAMED --
+add-opens=java.prefs/java.util.prefs=ALL-UNNAM
+ED --add-opens=java.base/java.nio.charset=ALL-
+UNNAMED 
+--add-opens=java.base/java.net=ALL-UNNAMED --a
+dd-opens=java.base/java.util.concurrent=ALL-UN
+NAMED --add-opens=java.base/java.util.concurre
+nt.atomic=ALL-UNNAMED --add-opens=java.xml/jav
+ax.xml.namespace=ALL-UNNAMED 
+--add-opens=java.base/java.time=ALL-UNNAMED 
+-Xmx4g -Dfile.encoding=UTF-8 
+-Duser.country=CD -Duser.language=fr 
+-Duser.variant -cp C:\Users\user\.gradle\wrapp
+er\dists\gradle-9.3.1-bin\23ovyewtku6u96viwx3x
+l3oks\gradle-9.3.1\lib\gradle-daemon-main-9.3.
+1.jar -javaagent:C:\Users\user\.gradle\wrapper
+\dists\gradle-9.3.1-bin\23ovyewtku6u96viwx3xl3
+oks\gradle-9.3.1\lib\agents\gradle-instrumenta
+tion-agent-9.3.1.jar org.gradle.launcher.daemo
+n.bootstrap.GradleDaemon 9.3.1
+Please read the following process output to 
+find out more:
+-----------------------
+
+
+* Try:
+> Run with --stacktrace option to get the 
+stack trace.
+> Run with --debug option to get more log 
+output.
+> Run with --scan to get full insights from a 
+Build Scan (powered by Develocity).
+> Get more help at https://help.gradle.org.
+#
+# Compiler replay data is saved as:
+# C:\360\Docta-na-tshombo-main\replay_pid20992.log

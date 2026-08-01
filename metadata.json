@@ -1,0 +1,6 @@
+{
+  "name": "Docta na Tshombo",
+  "description": "Votre bien-être, notre rythme - Application de téléconsultation créée par Henock Aduma",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

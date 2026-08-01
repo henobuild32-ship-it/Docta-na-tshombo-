@@ -1,0 +1,79 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isAuthenticated() && request.auth.uid == uid;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function isDoctor() {
+      return isAuthenticated() && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'doctor';
+    }
+
+    // ===== USER PROFILES =====
+    match /users/{userId}/profile/{fileName} {
+      // Allow read for authenticated users to view doctor avatars
+      allow read: if isAuthenticated();
+
+      // Users can upload their own profile photo
+      allow write: if isAuthenticated() && isOwner(userId)
+        && request.resource.size < 5 * 1024 * 1024  // 5MB max
+        && request.resource.contentType.matches('image/.*');  // Images only
+    }
+
+    // ===== DOCTOR DOCUMENTS =====
+    match /doctors/{doctorId}/documents/{fileName} {
+      // Doctors can read their own documents
+      // Admins can read all doctor documents
+      allow read: if isAuthenticated() && (
+        isOwner(doctorId) ||
+        isAdmin()
+      );
+
+      // Doctors can upload their verification documents
+      allow write: if isAuthenticated() && isDoctor()
+        && request.resource.size < 10 * 1024 * 1024  // 10MB max
+        && (request.resource.contentType.matches('image/.*') ||
+            request.resource.contentType.matches('application/pdf'));
+    }
+
+    // ===== PATIENT PRESCRIPTIONS =====
+    match /patients/{patientId}/prescriptions/{fileName} {
+      // Patients can read their own prescriptions
+      // Doctors who issued them can read
+      allow read: if isAuthenticated() && (
+        isOwner(patientId) ||
+        isAdmin()
+      );
+
+      // Doctors can upload prescriptions for patients
+      allow write: if isAuthenticated() && (
+        isDoctor() || isAdmin()
+      ) && request.resource.size < 10 * 1024 * 1024  // 10MB max
+        && request.resource.contentType.matches('application/pdf');
+    }
+
+    // ===== CONVERSATION ATTACHMENTS =====
+    match /conversations/{conversationId}/attachments/{fileName} {
+      // Conversation participants can read attachments
+      allow read: if isAuthenticated();
+
+      // Authenticated users can upload attachments
+      allow write: if isAuthenticated()
+        && request.resource.size < 20 * 1024 * 1024  // 20MB max
+        && (request.resource.contentType.matches('image/.*') ||
+            request.resource.contentType.matches('application/pdf') ||
+            request.resource.contentType.matches('application/msword') ||
+            request.resource.contentType.matches('application/vnd.openxmlformats-officedocument.*'));
+    }
+  }
+}

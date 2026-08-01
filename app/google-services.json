@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "467976158551",
+    "project_id": "docta-na-tshombo",
+    "storage_bucket": "docta-na-tshombo.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:467976158551:android:6ed266abb79e29fe175212",
+        "android_client_info": {
+          "package_name": "com.doctanatshom.com"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCOVeYYESoM4nqIQA-Ys6O_TSi9I_Gbf7Y"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

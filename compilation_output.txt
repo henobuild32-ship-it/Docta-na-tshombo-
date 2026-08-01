@@ -1,0 +1,93 @@
+﻿To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.3.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:generateDebugBuildConfig UP-TO-DATE
+> Task :app:generateDebugResources UP-TO-DATE
+> Task :app:processDebugGoogleServices UP-TO-DATE
+> Task :app:packageDebugResources UP-TO-DATE
+> Task :app:processDebugNavigationResources UP-TO-DATE
+> Task :app:parseDebugLocalResources UP-TO-DATE
+> Task :app:generateDebugRFile UP-TO-DATE
+> Task :app:kspDebugKotlin UP-TO-DATE
+> Task :app:compileDebugKotlin
+gradlew.bat : e: file:///C:/360/Docta-na-tshom
+bo-main/app/src/main/java/com/example/data/fir
+ebase/StorageRepository.kt:22:27 Unresolved 
+reference 'BuildConfig'.
+Au caractère C:\360\Docta-na-tshombo-main\comp
+ile_project.ps1:2 : 11
++ $output = & .\gradlew.bat 
+compileDebugKotlin --no-daemon 2>&1
++           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ( 
+   e: file:///C:/3... 'BuildConfig'.:String)  
+   [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandEr 
+   ror
+ 
+e: file:///C:/360/Docta-na-tshombo-main/app/sr
+c/main/java/com/example/data/firebase/StorageR
+epository.kt:23:27 Unresolved reference 
+'BuildConfig'.
+e: file:///C:/360/Docta-na-tshombo-main/app/sr
+c/main/java/com/example/data/firebase/StorageR
+epository.kt:30:39 Unresolved reference 
+'BuildConfig'.
+e: file:///C:/360/Docta-na-tshombo-main/app/sr
+c/main/java/com/example/data/firebase/StorageR
+epository.kt:54:26 Cannot access 
+'constructor(message: String, cause: 
+Throwable? = ...): StorageException': it is 
+protected in 
+'com/example/data/firebase/StorageException'.
+e: file:///C:/360/Docta-na-tshombo-main/app/sr
+c/main/java/com/example/data/firebase/StorageR
+epository.kt:69:20 None of the following 
+candidates is applicable:
+suspend fun upload(path: String, data: 
+ByteArray, options: UploadOptionBuilder.() -> 
+Unit = ...): FileUploadResponse
+suspend fun upload(path: String, data: 
+UploadData, options: UploadOptionBuilder.() 
+-> Unit = ...): FileUploadResponse
+e: file:///C:/360/Docta-na-tshombo-main/app/sr
+c/main/java/com/example/data/firebase/StorageR
+epository.kt:72:70 Argument type mismatch: 
+actual type is 'Int', but 'Duration' was 
+expected.
+e: file:///C:/360/Docta-na-tshombo-main/app/sr
+c/main/java/com/example/data/firebase/StorageR
+epository.kt:176:64 Argument type mismatch: 
+actual type is 'Long', but 'Duration' was 
+expected.
+e: file:///C:/360/Docta-na-tshombo-main/app/sr
+c/main/java/com/example/data/firebase/StorageR
+epository.kt:231:47 Unresolved reference 
+'StorageException'.
+
+> Task :app:compileDebugKotlin FAILED
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task 
+':app:compileDebugKotlin'.
+> A failure occurred while executing org.jetbr
+ains.kotlin.compilerRunner.GradleCompilerRunne
+rWithWorkers$GradleKotlinCompilerWorkAction
+   > Compilation error. See log for more 
+details
+
+* Try:
+> Run with --stacktrace option to get the 
+stack trace.
+> Run with --info or --debug option to get 
+more log output.
+> Run with --scan to get full insights from a 
+Build Scan (powered by Develocity).
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 2m 48s
+9 actionable tasks: 1 executed, 8 up-to-date

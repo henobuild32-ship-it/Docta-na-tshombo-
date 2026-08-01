@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Docta na Tshombo — Application Web & Santé</title>
+  <meta name="description" content="Docta na Tshombo : Téléconsultation, prise de rendez-vous, ordonnances, messagerie et constantes vitales en ligne." />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <meta name="theme-color" content="#2C4531" />
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    /* Custom Web App UI Overlays & Components */
+    .app-header {
+      background: #2C4531;
+      color: white;
+      padding: 12px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .app-brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 1.1rem; color: white; text-decoration: none; }
+    .app-brand img { width: 34px; height: 34px; border-radius: 8px; }
+    .role-badge { background: #9FD3B6; color: #2C4531; font-weight: 700; padding: 4px 10px; border-radius: 20px; font-size: 0.8rem; text-transform: uppercase; }
+    .app-layout { display: flex; min-height: calc(100vh - 60px); background: #F4F7F5; }
+    .app-sidebar { width: 260px; background: white; border-right: 1px solid #E2E8F0; padding: 20px 10px; display: flex; flex-direction: column; gap: 6px; }
+    @media (max-width: 768px) {
+      .app-layout { flex-direction: column; }
+      .app-sidebar { width: 100%; border-right: none; border-bottom: 1px solid #E2E8F0; padding: 10px; flex-direction: row; overflow-x: auto; }
+      .app-sidebar .nav-item { white-space: nowrap; padding: 8px 12px; font-size: 0.85rem; }
+    }
+    .nav-item {
+      display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 12px; color: #4A5568; font-weight: 600; text-decoration: none; cursor: pointer; transition: all 0.2s ease; border: none; background: transparent; width: 100%; text-align: left;
+    }
+    .nav-item:hover, .nav-item.active { background: #EAF1EC; color: #2C4531; }
+    .app-content { flex: 1; padding: 24px; max-width: 1200px; margin: 0 auto; width: 100%; }
+    .stat-card { background: white; padding: 20px; border-radius: 16px; box-shadow: 0 4px 14px rgba(0,0,0,0.03); border: 1px solid #EDF2F7; }
+    .stat-val { font-size: 1.8rem; font-weight: 800; color: #2C4531; margin-top: 4px; }
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 16px; }
+    .modal-overlay.active { display: flex; }
+    .modal-box { background: white; border-radius: 20px; width: 100%; max-width: 600px; max-height: 90vh; overflow-y: auto; padding: 28px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); }
+    .presence-switch { display: inline-flex; align-items: center; gap: 8px; background: #EAF1EC; padding: 6px 14px; border-radius: 999px; cursor: pointer; font-weight: 600; }
+    .pulse-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+    .pulse-dot.online { background: #38A169; box-shadow: 0 0 8px #38A169; }
+    .pulse-dot.offline { background: #E53E3E; }
+    .pulse-dot.busy { background: #DD6B20; }
+    .ppg-canvas { width: 100%; height: 120px; background: #1A202C; border-radius: 12px; margin: 12px 0; }
+    .chat-box { background: white; border-radius: 16px; border: 1px solid #E2E8F0; display: flex; flex-direction: column; height: 500px; }
+    .chat-messages { flex: 1; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+    .chat-bubble { max-width: 75%; padding: 12px 16px; border-radius: 16px; font-size: 0.95rem; line-height: 1.4; }
+    .chat-bubble.mine { align-self: flex-end; background: #2C4531; color: white; border-bottom-right-radius: 4px; }
+    .chat-bubble.other { align-self: flex-start; background: #EDF2F7; color: #2D3748; border-bottom-left-radius: 4px; }
+  </style>
+</head>
+<body>
+
+  <!-- Top Header Navigation -->
+  <header class="app-header">
+    <a href="index.html" class="app-brand">
+      <img src="assets/app-icon.jpg" alt="Logo" />
+      <span>Docta na Tshombo <small style="opacity:0.8; font-weight:400;">v1.3 Web</small></span>
+    </a>
+
+    <div style="display:flex; align-items:center; gap:16px;">
+      <div id="user-role-display" class="role-badge">PATIENT</div>
+
+      <button id="role-toggle-btn" onclick="toggleUserRole()" class="btn btn-ghost btn-sm" style="color:white; border-color:rgba(255,255,255,0.4);">
+        🔄 Basculer Espace Praticien / Patient
+      </button>
+
+      <a href="index.html" class="btn btn-secondary btn-sm" style="padding: 6px 12px; font-size:0.8rem;">
+        Site Vitrine / APK
+      </a>
+    </div>
+  </header>
+
+  <!-- Main App Layout -->
+  <div class="app-layout">
+    
+    <!-- Sidebar Navigation -->
+    <aside class="app-sidebar">
+      <!-- Patient Nav -->
+      <div id="patient-nav" style="display:flex; flex-direction:column; gap:6px; width:100%;">
+        <button class="nav-item active" onclick="switchTab('p-doctors')">👨‍⚕️ Trouver un Praticien</button>
+        <button class="nav-item" onclick="switchTab('p-appointments')">📅 Mes Rendez-vous</button>
+        <button class="nav-item" onclick="switchTab('p-vitals')">🩺 Scan Constantes Vitales</button>
+        <button class="nav-item" onclick="switchTab('p-messages')">💬 Messagerie</button>
+        <button class="nav-item" onclick="switchTab('p-prescriptions')">📄 Mes Ordonnances</button>
+        <button class="nav-item" onclick="switchTab('p-reminders')">💊 Rappels Médicaments</button>
+        <button class="nav-item" onclick="switchTab('about')">ℹ️ À propos & Contact</button>
+      </div>
+
+      <!-- Practitioner Nav -->
+      <div id="doctor-nav" style="display:none; flex-direction:column; gap:6px; width:100%;">
+        <button class="nav-item active" onclick="switchTab('d-dashboard')">📊 Tableau de Bord</button>
+        <button class="nav-item" onclick="switchTab('d-agenda')">📅 Agenda & RDV</button>
+        <button class="nav-item" onclick="switchTab('d-patients')">👥 Carnet Patients</button>
+        <button class="nav-item" onclick="switchTab('d-prescription')">📝 Rédiger / Partager Ordonnance</button>
+        <button class="nav-item" onclick="switchTab('d-messages')">💬 Messagerie Patients</button>
+        <button class="nav-item" onclick="switchTab('d-verification')">🔍 Scanner & Valider Documents</button>
+        <button class="nav-item" onclick="switchTab('d-settings')">⚙️ Paramètres & Horaires</button>
+        <button class="nav-item" onclick="switchTab('about')">ℹ️ À propos & Contact</button>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="app-content">
+
+      <!-- ================= PATIENT TABS ================= -->
+
+      <!-- Doctor Search & Booking -->
+      <div id="tab-p-doctors" class="app-tab">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
+          <div>
+            <h2>Trouver un Médecin & Téléconsulter</h2>
+            <p style="color:#718096;">Prenez rendez-vous en présentiel ou téléconsultation directe.</p>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <input type="text" id="doc-search-input" onkeyup="filterDoctors()" placeholder="Spécialité, nom ou ville..." style="padding:10px 16px; border-radius:10px; border:1px solid #CBD5E0; width:260px;" />
+          </div>
+        </div>
+
+        <div id="doctors-list-grid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(300px, 1fr)); gap:20px;">
+          <!-- Dynamically filled via JS -->
+        </div>
+      </div>
+
+      <!-- Patient Appointments -->
+      <div id="tab-p-appointments" class="app-tab" style="display:none;">
+        <h2>Mes Rendez-vous Médicaux</h2>
+        <p style="color:#718096; margin-bottom:20px;">Historique et consultations à venir.</p>
+        
+        <div id="patient-appointments-list" style="display:flex; flex-direction:column; gap:12px;">
+          <!-- Dynamically filled -->
+        </div>
+      </div>
+
+      <!-- Vital Signs Scan (Torche / Caméra PPG) -->
+      <div id="tab-p-vitals" class="app-tab" style="display:none;">
+        <div class="stat-card" style="max-width:680px; margin:0 auto; text-align:center;">
+          <h2>🩺 Scan des Constantes Vitales par Torche</h2>
+          <p style="color:#718096; margin-top:6px;">Placez votre index sur le capteur/flash de votre téléphone ou caméra web. L'application mesure le flux sanguin en temps réel.</p>
+
+          <div style="margin:24px 0; position:relative;">
+            <div id="scan-pulse-circle" style="width:120px; height:120px; border-radius:50%; background:#E2E8F0; margin:0 auto; display:flex; align-items:center; justify-content:center; font-size:2.5rem; transition:all 0.3s ease;">
+              🩸
+            </div>
+            <p id="scan-timer-text" style="font-weight:700; color:#2C4531; margin-top:12px;">Appuyez sur "Démarrer le scan" (15 secondes)</p>
+          </div>
+
+          <canvas id="ppg-graph" class="ppg-canvas"></canvas>
+
+          <div style="display:flex; justify-content:space-around; margin:20px 0;">
+            <div>
+              <span style="color:#718096; font-size:0.9rem;">Fréquence Cardiaque</span>
+              <div id="val-bpm" style="font-size:2rem; font-weight:800; color:#2C4531;">-- BPM</div>
+            </div>
+            <div>
+              <span style="color:#718096; font-size:0.9rem;">Saturation Oxygène (SpO2)</span>
+              <div id="val-spo2" style="font-size:2rem; font-weight:800; color:#319795;">-- %</div>
+            </div>
+          </div>
+
+          <button id="start-scan-btn" onclick="startVitalSignsScan()" class="btn btn-primary btn-lg" style="width:100%;">
+            📸 Démarrer le scan de 15 secondes
+          </button>
+        </div>
+      </div>
+
+      <!-- Patient Messages -->
+      <div id="tab-p-messages" class="app-tab" style="display:none;">
+        <h2>Messagerie Sécurisée</h2>
+        <p style="color:#718096; margin-bottom:16px;">Discutez en direct avec vos praticiens.</p>
+
+        <div class="chat-box">
+          <div style="padding:14px; border-bottom:1px solid #E2E8F0; background:#F7FAFC; border-radius:16px 16px 0 0; display:flex; justify-content:space-between; align-items:center;">
+            <strong id="p-chat-doc-name">Dr. Kabange Mwangele (Cardiologue)</strong>
+            <span class="pulse-dot online"></span>
+          </div>
+          <div id="p-chat-messages" class="chat-messages">
+            <!-- Messages dynamic -->
+          </div>
+          <div style="padding:12px; border-top:1px solid #E2E8F0; display:flex; gap:10px;">
+            <input type="text" id="p-chat-input" placeholder="Rédiger un message..." style="flex:1; padding:10px 16px; border-radius:999px; border:1px solid #CBD5E0;" />
+            <button onclick="sendPatientMessage()" class="btn btn-primary btn-sm">Envoyer</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Patient Prescriptions -->
+      <div id="tab-p-prescriptions" class="app-tab" style="display:none;">
+        <h2>Mes Ordonnances Médicales</h2>
+        <p style="color:#718096; margin-bottom:20px;">Consultez et téléchargez vos prescriptions délivrées par vos médecins.</p>
+        <div id="patient-prescriptions-list" style="display:flex; flex-direction:column; gap:12px;"></div>
+      </div>
+
+      <!-- Patient Medication Reminders -->
+      <div id="tab-p-reminders" class="app-tab" style="display:none;">
+        <h2>💊 Rappels de Médicaments</h2>
+        <p style="color:#718096; margin-bottom:20px;">Ne manquez plus jamais la prise de vos traitements.</p>
+        <div class="stat-card" style="margin-bottom:20px;">
+          <h3>+ Ajouter un rappel</h3>
+          <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
+            <input type="text" id="rem-med-name" placeholder="Nom du médicament (ex: Amoxicilline 1g)" style="flex:2; padding:10px; border-radius:8px; border:1px solid #CBD5E0;" />
+            <input type="time" id="rem-time" value="08:00" style="flex:1; padding:10px; border-radius:8px; border:1px solid #CBD5E0;" />
+            <button onclick="addMedReminder()" class="btn btn-primary btn-sm">Ajouter le rappel</button>
+          </div>
+        </div>
+        <div id="reminders-list" style="display:flex; flex-direction:column; gap:10px;"></div>
+      </div>
+
+
+      <!-- ================= PRACTITIONER TABS ================= -->
+
+      <!-- Practitioner Dashboard -->
+      <div id="tab-d-dashboard" class="app-tab" style="display:none;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
+          <div>
+            <h2>Tableau de Bord Praticien</h2>
+            <p style="color:#718096;">Vue d'ensemble de l'activité du cabinet.</p>
+          </div>
+
+          <div class="presence-switch" onclick="toggleDoctorPresence()">
+            <span id="doc-presence-dot" class="pulse-dot online"></span>
+            <span id="doc-presence-text">Statut: Présent (En ligne)</span>
+          </div>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-card">
+            <span style="color:#718096;">Consultations du jour</span>
+            <div id="d-stat-today" class="stat-val">8 Consultations</div>
+            <small style="color:#38A169;">3 Téléconsultations • 5 Présentiel</small>
+          </div>
+          <div class="stat-card">
+            <span style="color:#718096;">Patients en attente</span>
+            <div id="d-stat-waiting" class="stat-val">2 Patients</div>
+            <small style="color:#DD6B20;">Temps moyen: 12 min</small>
+          </div>
+          <div class="stat-card">
+            <span style="color:#718096;">Taux d'occupation</span>
+            <div id="d-stat-occupancy" class="stat-val">85 %</div>
+            <small style="color:#3182CE;">12 Créneaux réservés sur 14</small>
+          </div>
+          <div class="stat-card">
+            <span style="color:#718096;">Patients total suivis</span>
+            <div id="d-stat-total-patients" class="stat-val">42 Patients</div>
+            <small style="color:#805AD5;">+4 ce mois-ci</small>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:20px;">
+          <div class="stat-card">
+            <h3>Prochains Rendez-vous</h3>
+            <div id="d-upcoming-rdv-list" style="margin-top:12px; display:flex; flex-direction:column; gap:10px;"></div>
+          </div>
+          <div class="stat-card">
+            <h3>Alertes Médicales & Retards</h3>
+            <div style="margin-top:12px; display:flex; flex-direction:column; gap:10px;">
+              <div style="padding:10px; background:#FFF5F5; border-left:4px solid #E53E3E; border-radius:6px;">
+                <strong>Jean K. (26 ans)</strong> — Retard 15 min (Présentiel)
+              </div>
+              <div style="padding:10px; background:#FEFCBF; border-left:4px solid #D69E2E; border-radius:6px;">
+                <strong>Alerte constantes :</strong> Marie T. SpO2 94% mesuré aujourd'hui.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Practitioner Agenda -->
+      <div id="tab-d-agenda" class="app-tab" style="display:none;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+          <h2>Agenda & Consultations</h2>
+          <button onclick="openAddConsultationModal()" class="btn btn-primary btn-sm">+ Ajouter une consultation</button>
+        </div>
+        <div id="doctor-agenda-list" style="display:flex; flex-direction:column; gap:12px;"></div>
+      </div>
+
+      <!-- Practitioner Patients Management -->
+      <div id="tab-d-patients" class="app-tab" style="display:none;">
+        <h2>👥 Carnet de Patients</h2>
+        <p style="color:#718096; margin-bottom:20px;">Recherche, dossiers médicaux, historiques et antécédents.</p>
+        <div id="doctor-patients-list" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(300px, 1fr)); gap:16px;"></div>
+      </div>
+
+      <!-- Practitioner Prescriptions Generator & Share -->
+      <div id="tab-d-prescription" class="app-tab" style="display:none;">
+        <h2>📝 Rédiger & Partager une Ordonnance</h2>
+        <p style="color:#718096; margin-bottom:20px;">Générez des ordonnances numériques certifiées avec signature et cachet.</p>
+
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:20px;">
+          <div class="stat-card">
+            <h3>Information Prescription</h3>
+            <div style="display:flex; flex-direction:column; gap:12px; margin-top:14px;">
+              <label>Nom du Patient:
+                <select id="presc-patient-select" style="width:100%; padding:10px; border-radius:8px; border:1px solid #CBD5E0; margin-top:4px;">
+                  <option value="Jean Mukendi">Jean Mukendi (34 ans)</option>
+                  <option value="Marie Tshilombo">Marie Tshilombo (28 ans)</option>
+                  <option value="Paul Kande">Paul Kande (52 ans)</option>
+                </select>
+              </label>
+              <label>Diagnostic / Motif:
+                <input type="text" id="presc-diag" value="Grippe saisonnière / Fièvre" style="width:100%; padding:10px; border-radius:8px; border:1px solid #CBD5E0; margin-top:4px;" />
+              </label>
+
+              <h4>Médicaments Prescrits:</h4>
+              <div id="presc-meds-container" style="display:flex; flex-direction:column; gap:8px;">
+                <div style="display:flex; gap:8px;">
+                  <input type="text" class="p-med-name" placeholder="Médicament" value="Paracétamol 1g" style="flex:2; padding:8px; border-radius:6px; border:1px solid #CBD5E0;" />
+                  <input type="text" class="p-med-poso" placeholder="Posologie" value="1 comp 3x/jour" style="flex:1; padding:8px; border-radius:6px; border:1px solid #CBD5E0;" />
+                  <input type="text" class="p-med-dur" placeholder="Durée" value="5 jours" style="flex:1; padding:8px; border-radius:6px; border:1px solid #CBD5E0;" />
+                </div>
+                <div style="display:flex; gap:8px;">
+                  <input type="text" class="p-med-name" placeholder="Médicament" value="Amoxicilline 1g" style="flex:2; padding:8px; border-radius:6px; border:1px solid #CBD5E0;" />
+                  <input type="text" class="p-med-poso" placeholder="Posologie" value="1 comp 2x/jour" style="flex:1; padding:8px; border-radius:6px; border:1px solid #CBD5E0;" />
+                  <input type="text" class="p-med-dur" placeholder="Durée" value="7 jours" style="flex:1; padding:8px; border-radius:6px; border:1px solid #CBD5E0;" />
+                </div>
+              </div>
+              <button onclick="addPrescMedRow()" class="btn btn-ghost btn-sm" style="align-self:flex-start;">+ Ajouter un médicament</button>
+
+              <button onclick="generatePrescriptionPreview()" class="btn btn-primary btn-block" style="margin-top:14px;">📄 Générer l'Aperçu PDF & Cachet</button>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <h3>Aperçu Ordonnance & Options de Partage</h3>
+            <div id="presc-preview-box" style="border:2px dashed #CBD5E0; padding:20px; border-radius:12px; background:#FAFAFA; margin-top:14px; min-height:260px;">
+              <p style="color:#A0AEC0; text-align:center; margin-top:80px;">Remplissez le formulaire et cliquez sur "Générer l'Aperçu".</p>
+            </div>
+
+            <div id="presc-share-actions" style="display:none; flex-direction:column; gap:10px; margin-top:16px;">
+              <h4>Options de Partage Sécurisé :</h4>
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                <button onclick="sharePrescription('message')" class="btn btn-primary btn-sm">📤 Par Message (Chat)</button>
+                <button onclick="sharePrescription('email')" class="btn btn-secondary btn-sm">📧 Par Email (henockaduma2@gmail.com)</button>
+                <button onclick="sharePrescription('sms')" class="btn btn-ghost btn-sm">📱 Par SMS</button>
+                <button onclick="sharePrescription('download')" class="btn btn-ghost btn-sm">💾 Télécharger PDF</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Practitioner Document Scan Auto-Validation (15 seconds) -->
+      <div id="tab-d-verification" class="app-tab" style="display:none;">
+        <div class="stat-card" style="max-width:680px; margin:0 auto; text-align:center;">
+          <h2>🔍 Vérification Automatique des Documents (15s)</h2>
+          <p style="color:#718096; margin-top:6px;">Uploadez le diplôme ou la carte professionnelle. Le scanner automatique vérifie la conformité, la résolution et la signature en 15 secondes max.</p>
+
+          <div style="margin:24px 0; padding:20px; border:2px dashed #CBD5E0; border-radius:16px; background:#FAFAFA;">
+            <input type="file" id="doc-upload-file" accept="image/*,application/pdf" style="display:none;" onchange="handleDocFileSelected(event)" />
+            <button onclick="document.getElementById('doc-upload-file').click()" class="btn btn-ghost btn-lg">
+              📁 Sélectionner un document (PDF / JPEG / PNG, Max 5MB)
+            </button>
+            <p id="selected-doc-name" style="margin-top:8px; font-weight:600; color:#2C4531;"></p>
+          </div>
+
+          <div id="scan-progress-box" style="display:none; margin:20px 0;">
+            <div style="background:#E2E8F0; border-radius:999px; height:14px; overflow:hidden;">
+              <div id="scan-progress-bar" style="width:0%; height:100%; background:#2C4531; transition:width 0.3s linear;"></div>
+            </div>
+            <p id="scan-status-label" style="margin-top:10px; font-weight:700; color:#2C4531;">Analyse du document en cours (15s)...</p>
+          </div>
+
+          <div id="scan-result-banner" style="display:none; padding:16px; border-radius:12px; margin-top:16px; font-weight:700;"></div>
+
+          <button id="run-auto-val-btn" onclick="startDocAutoValidation()" class="btn btn-primary btn-lg" style="width:100%;" disabled>
+            ⚡ Lancer la vérification automatique en 15 secondes
+          </button>
+        </div>
+      </div>
+
+      <!-- Practitioner Settings -->
+      <div id="tab-d-settings" class="app-tab" style="display:none;">
+        <h2>⚙️ Paramètres du Compte & Horaires</h2>
+        <p style="color:#718096; margin-bottom:20px;">Gérez vos plages d'ouverture, adresse et profil.</p>
+        <div class="stat-card" style="max-width:600px;">
+          <h3>Horaires Hebdomadaires</h3>
+          <div style="display:flex; flex-direction:column; gap:10px; margin-top:14px;">
+            <label style="display:flex; justify-content:space-between; align-items:center;">
+              <span>Lundi - Vendredi :</span>
+              <input type="text" value="08:00 - 17:00" style="padding:8px; border-radius:6px; border:1px solid #CBD5E0;" />
+            </label>
+            <label style="display:flex; justify-content:space-between; align-items:center;">
+              <span>Samedi :</span>
+              <input type="text" value="09:00 - 13:00" style="padding:8px; border-radius:6px; border:1px solid #CBD5E0;" />
+            </label>
+            <label style="display:flex; justify-content:space-between; align-items:center;">
+              <span>Dimanche & Congés :</span>
+              <input type="text" value="Fermé" style="padding:8px; border-radius:6px; border:1px solid #CBD5E0;" />
+            </label>
+            <button onclick="alert('Horaires sauvegardés avec succès !')" class="btn btn-primary btn-sm" style="margin-top:10px; align-self:flex-start;">Enregistrer les horaires</button>
+          </div>
+        </div>
+      </div>
+
+
+      <!-- ================= ABOUT & LEGAL TAB ================= -->
+      <div id="tab-about" class="app-tab" style="display:none;">
+        <div class="stat-card" style="max-width:700px; margin:0 auto;">
+          <div style="text-align:center; border-bottom:1px solid #E2E8F0; padding-bottom:20px; margin-bottom:20px;">
+            <img src="assets/app-icon.jpg" alt="Logo" style="width:70px; height:70px; border-radius:16px; margin:0 auto 12px;" />
+            <h2>Docta na Tshombo — Version 1.3 Web</h2>
+            <p style="color:#718096;">Conçue et développée par <strong>Henock Aduma</strong></p>
+          </div>
+
+          <h3>📧 Contact & Support</h3>
+          <p style="font-size:1.1rem; font-weight:700; color:#2C4531; margin:10px 0 20px;">
+            Email : <a href="mailto:henockaduma2@gmail.com" style="color:#2C4531; text-decoration:underline;">henockaduma2@gmail.com</a>
+          </p>
+
+          <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:24px;">
+            <button onclick="openLegalModal('privacy')" class="btn btn-ghost btn-sm">📜 Politique de Confidentialité</button>
+            <button onclick="openLegalModal('terms')" class="btn btn-ghost btn-sm">⚖️ Conditions d'Utilisation</button>
+            <a href="index.html" class="btn btn-secondary btn-sm">📱 Site Vitrine / Télécharger APK</a>
+          </div>
+
+          <h3>Features Clés de l'Application :</h3>
+          <ul style="margin-left:20px; line-height:1.8; color:#4A5568;">
+            <li>✅ Téléconsultation vidéo interactive Jitsi/WebRTC.</li>
+            <li>✅ Scan des constantes vitales (BPM, SpO2) par caméra/torche.</li>
+            <li>✅ Générateur et partage d'ordonnance sécurisé (Chat, Email, PDF).</li>
+            <li>✅ Validation automatique des praticiens en 15 secondes.</li>
+            <li>✅ Messagerie en temps réel et rappels de traitements.</li>
+          </ul>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- Teleconsultation Video Modal -->
+  <div id="teleconsult-modal" class="modal-overlay">
+    <div class="modal-box" style="max-width:800px; padding:0; overflow:hidden;">
+      <div style="background:#2C4531; color:white; padding:16px 20px; display:flex; justify-content:space-between; align-items:center;">
+        <h3 id="teleconsult-modal-title">📹 Téléconsultation en Direct</h3>
+        <button onclick="closeTeleconsultModal()" style="background:none; border:none; color:white; font-size:1.5rem; cursor:pointer;">&times;</button>
+      </div>
+
+      <div style="position:relative; width:100%; height:450px; background:#000;">
+        <iframe id="jitsi-iframe" src="" style="width:100%; height:100%; border:none;" allow="camera; microphone; fullscreen; display-capture"></iframe>
+      </div>
+
+      <div style="padding:14px 20px; background:#F7FAFC; display:flex; justify-content:space-between; align-items:center;">
+        <span style="font-size:0.9rem; color:#718096;">Téléconsultation sécurisée WebRTC</span>
+        <button onclick="closeTeleconsultModal()" class="btn btn-secondary btn-sm">Raccrocher & Quitter</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Consultation Modal -->
+  <div id="add-consult-modal" class="modal-overlay">
+    <div class="modal-box">
+      <h3>+ Ajouter manuellement une consultation</h3>
+      <div style="display:flex; flex-direction:column; gap:12px; margin-top:16px;">
+        <label>Nom du Patient:
+          <input type="text" id="add-c-patient" placeholder="Ex: Jean Mukendi" style="width:100%; padding:10px; border-radius:8px; border:1px solid #CBD5E0;" />
+        </label>
+        <label>Date & Heure:
+          <input type="datetime-local" id="add-c-date" style="width:100%; padding:10px; border-radius:8px; border:1px solid #CBD5E0;" />
+        </label>
+        <label>Motif de Consultation:
+          <input type="text" id="add-c-reason" placeholder="Ex: Contrôle tension" style="width:100%; padding:10px; border-radius:8px; border:1px solid #CBD5E0;" />
+        </label>
+        <label>Type:
+          <select id="add-c-type" style="width:100%; padding:10px; border-radius:8px; border:1px solid #CBD5E0;">
+            <option value="présentiel">Présentiel au cabinet</option>
+            <option value="téléconsultation">Téléconsultation Vidéo</option>
+          </select>
+        </label>
+        <div style="display:flex; gap:10px; margin-top:12px;">
+          <button onclick="saveManualConsultation()" class="btn btn-primary btn-block">Enregistrer</button>
+          <button onclick="closeAddConsultationModal()" class="btn btn-ghost btn-block">Annuler</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Legal Info Modal -->
+  <div id="legal-modal" class="modal-overlay">
+    <div class="modal-box">
+      <h3 id="legal-title">Information Légale</h3>
+      <div id="legal-body" style="margin:16px 0; line-height:1.6; max-height:60vh; overflow-y:auto;"></div>
+      <button onclick="closeLegalModal()" class="btn btn-primary btn-block">Fermer</button>
+    </div>
+  </div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>

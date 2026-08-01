@@ -1,0 +1,213 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isAuthenticated() && request.auth.uid == uid;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function isDoctor() {
+      return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'doctor';
+    }
+
+    function isPatient() {
+      return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'patient';
+    }
+
+    // ===== USERS =====
+    match /users/{userId} {
+      // Users can read their own profile
+      // Admins can read all profiles
+      allow read: if isAuthenticated() && (
+        isOwner(userId) ||
+        isAdmin()
+      );
+
+      // Users can create their own profile during registration
+      allow create: if isAuthenticated() && isOwner(userId);
+
+      // Users can update their own profile
+      // Admins can update any profile
+      allow update: if isAuthenticated() && (isOwner(userId) || isAdmin());
+
+      // Only admins can delete users
+      allow delete: if isAdmin();
+    }
+
+    // ===== DOCTORS =====
+    match /doctors/{doctorId} {
+      // Anyone authenticated can read doctor profiles (for search/listing)
+      allow read: if isAuthenticated();
+
+      // Doctors can create their own profile
+      allow create: if isAuthenticated() && isDoctor();
+
+      // Doctors can update their own profile
+      // Admins can update any doctor profile
+      allow update: if isAuthenticated() && (
+        isOwner(get(/databases/$(database)/documents/doctors/$(doctorId)).data.userId) ||
+        isAdmin()
+      );
+
+      // Only admins can delete doctor profiles
+      allow delete: if isAdmin();
+    }
+
+    // ===== APPOINTMENTS =====
+    match /appointments/{appointmentId} {
+      // Patients can read their own appointments
+      // Doctors can read appointments assigned to them
+      // Admins can read all appointments
+      allow read: if isAuthenticated() && (
+        isOwner(get(/databases/$(database)/documents/appointments/$(appointmentId)).data.patientId) ||
+        isOwner(get(/databases/$(database)/documents/appointments/$(appointmentId)).data.doctorId) ||
+        isAdmin()
+      );
+
+      // Authenticated users can create appointments
+      allow create: if isAuthenticated();
+
+      // Patients can cancel their own appointments
+      // Doctors can confirm/complete appointments assigned to them
+      // Admins can update any appointment
+      allow update: if isAuthenticated() && (
+        isOwner(get(/databases/$(database)/documents/appointments/$(appointmentId)).data.patientId) ||
+        isOwner(get(/databases/$(database)/documents/appointments/$(appointmentId)).data.doctorId) ||
+        isAdmin()
+      );
+
+      // Only admins can delete appointments
+      allow delete: if isAdmin();
+    }
+
+    // ===== CONVERSATIONS =====
+    match /conversations/{conversationId} {
+      // Only participants can read conversations
+      allow read: if isAuthenticated() &&
+        request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds;
+
+      // Any authenticated user can create a conversation
+      allow create: if isAuthenticated();
+
+      // Participants can update conversation metadata
+      allow update: if isAuthenticated() &&
+        request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds;
+    }
+
+    // ===== MESSAGES =====
+    match /messages/{messageId} {
+      // Only conversation participants can read messages
+      allow read: if isAuthenticated() &&
+        request.auth.uid in get(/databases/$(database)/documents/conversations/$(get(/databases/$(database)/documents/messages/$(messageId)).data.conversationId)).data.participantIds;
+
+      // Authenticated users can send messages
+      allow create: if isAuthenticated();
+
+      // No updates or deletes for messages (audit trail)
+    }
+
+    // ===== PRESCRIPTIONS =====
+    match /prescriptions/{prescriptionId} {
+      // Patients can read their own prescriptions
+      // Doctors can read prescriptions they issued
+      // Admins can read all prescriptions
+      allow read: if isAuthenticated() && (
+        isOwner(get(/databases/$(database)/documents/prescriptions/$(prescriptionId)).data.patientId) ||
+        isOwner(get(/databases/$(database)/documents/prescriptions/$(prescriptionId)).data.doctorId) ||
+        isAdmin()
+      );
+
+      // Only doctors can create prescriptions
+      allow create: if isAuthenticated() && isDoctor();
+
+      // No updates to signed prescriptions
+      allow update: if false;
+
+      // Only admins can delete prescriptions
+      allow delete: if isAdmin();
+    }
+
+    // ===== MEDICATION REMINDERS =====
+    match /medication_reminders/{reminderId} {
+      // Patients can read their own reminders
+      allow read: if isAuthenticated() &&
+        isOwner(get(/databases/$(database)/documents/medication_reminders/$(reminderId)).data.patientId);
+
+      // Patients can create their own reminders
+      // Doctors can create reminders for their patients
+      allow create: if isAuthenticated() && (
+        isPatient() ||
+        isDoctor()
+      );
+
+      // Patients can update their own reminders (mark as taken)
+      allow update: if isAuthenticated() &&
+        isOwner(get(/databases/$(database)/documents/medication_reminders/$(reminderId)).data.patientId);
+
+      // Patients can delete their own reminders
+      allow delete: if isAuthenticated() &&
+        isOwner(get(/databases/$(database)/documents/medication_reminders/$(reminderId)).data.patientId);
+    }
+
+    // ===== NOTIFICATIONS =====
+    match /notifications/{notificationId} {
+      // Users can read their own notifications
+      allow read: if isAuthenticated() &&
+        isOwner(get(/databases/$(database)/documents/notifications/$(notificationId)).data.userId);
+
+      // System creates notifications (via Cloud Functions)
+      allow create: if isAuthenticated();
+
+      // Users can mark their own notifications as read
+      allow update: if isAuthenticated() &&
+        isOwner(get(/databases/$(database)/documents/notifications/$(notificationId)).data.userId);
+    }
+
+    // ===== REVIEWS =====
+    match /reviews/{reviewId} {
+      // Anyone can read reviews
+      allow read: if isAuthenticated();
+
+      // Patients can create reviews
+      allow create: if isAuthenticated() && isPatient();
+
+      // Patients can update their own reviews
+      allow update: if isAuthenticated() &&
+        isOwner(get(/databases/$(database)/documents/reviews/$(reviewId)).data.patientId);
+
+      // Patients can delete their own reviews, admins can delete any
+      allow delete: if isAuthenticated() && (
+        isOwner(get(/databases/$(database)/documents/reviews/$(reviewId)).data.patientId) ||
+        isAdmin()
+      );
+    }
+
+    // ===== SPECIALTIES =====
+    match /specialties/{specialtyId} {
+      // Anyone can read specialties
+      allow read: if isAuthenticated();
+
+      // Only admins can manage specialties
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ===== CONSULTATIONS =====
+    match /consultations/{consultationId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // ===== CONSTANTES VITALES =====
+    match /constantes_vitales/{vitalsId} {
+      allow read, write: if isAuthenticated();
+    }
+  }
+}
