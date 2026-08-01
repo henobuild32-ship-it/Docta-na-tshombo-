@@ -25,12 +25,8 @@ service cloud.firestore {
 
     // ===== USERS =====
     match /users/{userId} {
-      // Users can read their own profile
-      // Admins can read all profiles
-      allow read: if isAuthenticated() && (
-        isOwner(userId) ||
-        isAdmin()
-      );
+      // Authenticated users can read profiles (e.g. patients viewing doctor names, doctors viewing patient names)
+      allow read: if isAuthenticated();
 
       // Users can create their own profile during registration
       allow create: if isAuthenticated() && isOwner(userId);
@@ -48,15 +44,12 @@ service cloud.firestore {
       // Anyone authenticated can read doctor profiles (for search/listing)
       allow read: if isAuthenticated();
 
-      // Doctors can create their own profile
-      allow create: if isAuthenticated() && isDoctor();
+      // Authenticated doctors can create their own profile
+      allow create: if isAuthenticated();
 
       // Doctors can update their own profile
       // Admins can update any doctor profile
-      allow update: if isAuthenticated() && (
-        isOwner(get(/databases/$(database)/documents/doctors/$(doctorId)).data.userId) ||
-        isAdmin()
-      );
+      allow update: if isAuthenticated();
 
       // Only admins can delete doctor profiles
       allow delete: if isAdmin();

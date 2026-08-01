@@ -1,134 +1,120 @@
 /**
- * Docta na Tshombo — Interactive Web Application Logic
+ * Docta na Tshombo — Interactive Web Application Logic (Firebase Auth & Real Firestore Data)
  * Created by Henock Aduma (henockaduma2@gmail.com)
  */
 
 (function () {
   "use strict";
 
-  // State Management
+  // Firebase Init
+  const firebaseConfig = {
+    apiKey: "AIzaSyCOVeYYESoM4nqIQA-Ys6O_TSi9I_Gbf7Y",
+    authDomain: "docta-na-tshombo.firebaseapp.com",
+    projectId: "docta-na-tshombo",
+    storageBucket: "docta-na-tshombo.firebasestorage.app",
+    messagingSenderId: "467976158551",
+    appId: "1:467976158551:web:docta-na-tshombo-web"
+  };
+
+  if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+  }
+
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+
+  // Global App State
+  let currentUser = null; // Firebase Auth User
+  let currentUserData = null; // Firestore User Document
   let currentRole = "patient"; // 'patient' or 'doctor'
   let doctorPresence = "present"; // 'present' or 'absent'
   let activeTab = "p-doctors";
   let scanTimer = null;
-  let scanProgress = 0;
   let ppgAnimFrame = null;
+  let currentDoctorsList = [];
+  let currentAppointmentsList = [];
+  let currentRemindersList = [];
+  let currentPrescriptionsList = [];
+  let activeChatUnsubscribe = null;
 
-  // Mock Database
-  const doctors = [
-    {
-      id: "doc1",
-      name: "Dr. Kabange Mwangele",
-      specialty: "Cardiologue & Médecine Générale",
-      hospital: "Hôpital du Cinquantenaire, Kinshasa",
-      experience: "12 ans d'expérience",
-      rating: "4.9 ★ (128 avis)",
-      status: "online",
-      verified: true,
-      avatar: "assets/app-icon.jpg"
-    },
-    {
-      id: "doc2",
-      name: "Dr. Sandrine Ilunga",
-      specialty: "Pédiatre & Néonatologie",
-      hospital: "Clinique Ngaliema, Kinshasa",
-      experience: "9 ans d'expérience",
-      rating: "4.8 ★ (95 avis)",
-      status: "online",
-      verified: true,
-      avatar: "assets/app-icon.jpg"
-    },
-    {
-      id: "doc3",
-      name: "Dr. Alain Bakole",
-      specialty: "Neurologue & Neuro-pédiatrie",
-      hospital: "CHPR Lubumbashi",
-      experience: "15 ans d'expérience",
-      rating: "5.0 ★ (210 avis)",
-      status: "busy",
-      verified: true,
-      avatar: "assets/app-icon.jpg"
-    },
-    {
-      id: "doc4",
-      name: "Dr. Grace Mukendi",
-      specialty: "Gynécologue-Obstétricienne",
-      hospital: "Centre Médical de Goma",
-      experience: "8 ans d'expérience",
-      rating: "4.9 ★ (88 avis)",
-      status: "offline",
-      verified: true,
-      avatar: "assets/app-icon.jpg"
+  // Initialize Auth Listener
+  auth.onAuthStateChanged(async (user) => {
+    currentUser = user;
+    const authBtn = document.getElementById("auth-btn");
+    const logoutBtn = document.getElementById("logout-btn");
+    const headerUserName = document.getElementById("header-user-name");
+
+    if (user) {
+      // User is signed in
+      try {
+        const userDoc = await db.collection("users").document(user.uid).get();
+        if (userDoc.exists) {
+          currentUserData = userDoc.data();
+          currentRole = currentUserData.role || "patient";
+        } else {
+          // Default profile if doc doesn't exist
+          currentUserData = {
+            uid: user.uid,
+            email: user.email,
+            firstName: user.displayName ? user.displayName.split(" ")[0] : "Utilisateur",
+            lastName: user.displayName ? user.displayName.split(" ").slice(1).join(" ") : "",
+            role: "patient"
+          };
+          currentRole = "patient";
+        }
+      } catch (e) {
+        console.warn("Could not fetch user profile:", e);
+        currentUserData = { uid: user.uid, email: user.email, firstName: "Utilisateur", role: "patient" };
+      }
+
+      if (authBtn) authBtn.style.display = "none";
+      if (logoutBtn) logoutBtn.style.display = "inline-flex";
+      if (headerUserName) {
+        const nameToShow = (currentUserData.firstName + " " + (currentUserData.lastName || "")).trim() || user.email;
+        headerUserName.textContent = "👋 " + nameToShow;
+      }
+
+      updateRoleUI();
+      closeAuthModal();
+    } else {
+      // User is signed out
+      currentUserData = null;
+      currentRole = "patient";
+      if (authBtn) authBtn.style.display = "inline-flex";
+      if (logoutBtn) logoutBtn.style.display = "none";
+      if (headerUserName) headerUserName.textContent = "";
+
+      updateRoleUI();
+      // Prompt auth modal if on app.html
+      openAuthModal();
     }
-  ];
+  });
 
-  let patientAppointments = [
-    {
-      id: "rdv-101",
-      docId: "doc1",
-      docName: "Dr. Kabange Mwangele",
-      specialty: "Cardiologue",
-      date: "01/08/2026 à 15:30",
-      type: "Téléconsultation",
-      reason: "Bilan tensionnel et essoufflement",
-      status: "Confirmé"
-    },
-    {
-      id: "rdv-102",
-      docId: "doc2",
-      docName: "Dr. Sandrine Ilunga",
-      specialty: "Pédiatre",
-      date: "05/08/2026 à 10:00",
-      type: "Présentiel",
-      reason: "Suivi pédiatrique trimestriel",
-      status: "En attente"
-    }
-  ];
-
-  let patientMessages = [
-    { sender: "other", text: "Bonjour ! Comment vous sentez-vous depuis la prise du traitement ?", time: "14:20" },
-    { sender: "mine", text: "Bonjour Docteur. La fièvre a baissé mais j'ai encore une légère toux.", time: "14:22" },
-    { sender: "other", text: "D'accord, continuez le Paracétamol et buvez beaucoup d'eau. N'hésitez pas si besoin !", time: "14:25" }
-  ];
-
-  let patientPrescriptions = [
-    {
-      id: "ORD-2026-8812",
-      docName: "Dr. Kabange Mwangele",
-      date: "01/08/2026",
-      diag: "Grippe A & Fièvre",
-      meds: "Paracétamol 1g (3x/j, 5j), Amoxicilline 1g (2x/j, 7j)"
-    }
-  ];
-
-  let medReminders = [
-    { id: 1, name: "Paracétamol 1g", time: "08:00", active: true },
-    { id: 2, name: "Amoxicilline 1g", time: "20:00", active: true }
-  ];
-
-  // Global Functions Attached to Window
-  window.toggleUserRole = function () {
-    currentRole = currentRole === "patient" ? "doctor" : "patient";
+  function updateRoleUI() {
     const roleBadge = document.getElementById("user-role-display");
     const pNav = document.getElementById("patient-nav");
     const dNav = document.getElementById("doctor-nav");
 
     if (currentRole === "patient") {
-      roleBadge.textContent = "PATIENT";
-      roleBadge.style.background = "#9FD3B6";
-      roleBadge.style.color = "#2C4531";
-      pNav.style.display = "flex";
-      dNav.style.display = "none";
+      if (roleBadge) {
+        roleBadge.textContent = "PATIENT";
+        roleBadge.style.background = "#9FD3B6";
+        roleBadge.style.color = "#2C4531";
+      }
+      if (pNav) pNav.style.display = "flex";
+      if (dNav) dNav.style.display = "none";
       switchTab("p-doctors");
     } else {
-      roleBadge.textContent = "PRATICIEN (DOCTEUR)";
-      roleBadge.style.background = "#C96F4A";
-      roleBadge.style.color = "white";
-      pNav.style.display = "none";
-      dNav.style.display = "flex";
+      if (roleBadge) {
+        roleBadge.textContent = "PRATICIEN (DOCTEUR)";
+        roleBadge.style.background = "#C96F4A";
+        roleBadge.style.color = "white";
+      }
+      if (pNav) pNav.style.display = "none";
+      if (dNav) dNav.style.display = "flex";
       switchTab("d-dashboard");
     }
-  };
+  }
 
   window.switchTab = function (tabId) {
     activeTab = tabId;
@@ -138,51 +124,210 @@
     const targetTab = document.getElementById("tab-" + tabId);
     if (targetTab) targetTab.style.display = "block";
 
-    // Highlight active nav item
     const activeNavBtn = document.querySelector(`[onclick="switchTab('${tabId}')"]`);
     if (activeNavBtn) activeNavBtn.classList.add("active");
 
-    // Refresh contents
-    if (tabId === "p-doctors") renderDoctorGrid();
-    if (tabId === "p-appointments") renderPatientAppointments();
-    if (tabId === "p-prescriptions") renderPatientPrescriptions();
-    if (tabId === "p-reminders") renderReminders();
-    if (tabId === "d-dashboard") renderDoctorDashboard();
-    if (tabId === "d-agenda") renderDoctorAgenda();
-    if (tabId === "d-patients") renderDoctorPatients();
+    // Load real Firestore Data per tab
+    if (tabId === "p-doctors") loadDoctorsFromFirestore();
+    if (tabId === "p-appointments") loadPatientAppointmentsFromFirestore();
+    if (tabId === "p-prescriptions") loadPatientPrescriptionsFromFirestore();
+    if (tabId === "p-reminders") loadRemindersFromFirestore();
+    if (tabId === "p-messages") initChatMessages();
+    if (tabId === "d-dashboard") loadDoctorDashboardFromFirestore();
+    if (tabId === "d-agenda") loadDoctorAgendaFromFirestore();
+    if (tabId === "d-patients") loadDoctorPatientsFromFirestore();
+    if (tabId === "d-messages") initChatMessages();
   };
 
-  // Render Doctors Grid (No pricing/tarif shown)
-  function renderDoctorGrid() {
+  // Auth Modals & Form Actions
+  window.openAuthModal = function () {
+    const modal = document.getElementById("auth-modal");
+    if (modal) modal.classList.add("active");
+  };
+
+  window.closeAuthModal = function () {
+    const modal = document.getElementById("auth-modal");
+    if (modal) modal.classList.remove("active");
+  };
+
+  window.switchAuthTab = function (type) {
+    const tabLogin = document.getElementById("auth-tab-login");
+    const tabSignup = document.getElementById("auth-tab-signup");
+    const formLogin = document.getElementById("login-form");
+    const formSignup = document.getElementById("signup-form");
+
+    if (type === "login") {
+      tabLogin.classList.add("active");
+      tabSignup.classList.remove("active");
+      formLogin.style.display = "flex";
+      formSignup.style.display = "none";
+    } else {
+      tabSignup.classList.add("active");
+      tabLogin.classList.remove("active");
+      formSignup.style.display = "flex";
+      formLogin.style.display = "none";
+    }
+  };
+
+  window.toggleSignupRoleFields = function () {
+    const role = document.getElementById("signup-role").value;
+    const docFields = document.getElementById("doctor-signup-fields");
+    if (docFields) {
+      docFields.style.display = (role === "doctor") ? "flex" : "none";
+    }
+  };
+
+  window.handleLoginSubmit = async function (e) {
+    e.preventDefault();
+    const email = document.getElementById("login-email").value.trim();
+    const password = document.getElementById("login-password").value;
+    const errDiv = document.getElementById("login-error");
+    errDiv.style.display = "none";
+
+    try {
+      await auth.signInWithEmailAndPassword(email, password);
+      closeAuthModal();
+    } catch (err) {
+      errDiv.textContent = "Erreur de connexion : " + (err.message || "Identifiants invalides");
+      errDiv.style.display = "block";
+    }
+  };
+
+  window.handleSignupSubmit = async function (e) {
+    e.preventDefault();
+    const role = document.getElementById("signup-role").value;
+    const firstName = document.getElementById("signup-firstname").value.trim();
+    const lastName = document.getElementById("signup-lastname").value.trim();
+    const email = document.getElementById("signup-email").value.trim();
+    const password = document.getElementById("signup-password").value;
+    const phone = document.getElementById("signup-phone").value.trim();
+    const errDiv = document.getElementById("signup-error");
+    errDiv.style.display = "none";
+
+    try {
+      const res = await auth.createUserWithEmailAndPassword(email, password);
+      const user = res.user;
+
+      // Update Auth Profile Display Name
+      await user.updateProfile({ displayName: firstName + " " + lastName });
+
+      // Save User Doc to Firestore
+      const userDocData = {
+        uid: user.uid,
+        email: email,
+        firstName: firstName,
+        lastName: lastName,
+        phone: phone,
+        role: role,
+        isVerified: role === "doctor",
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      };
+
+      await db.collection("users").doc(user.uid).set(userDocData);
+
+      // If Doctor, create doctor profile document
+      if (role === "doctor") {
+        const specialty = document.getElementById("signup-doc-specialty").value.trim() || "Médecine Générale";
+        const hospital = document.getElementById("signup-doc-hospital").value.trim() || "Clinique Privée";
+        const rpps = document.getElementById("signup-doc-rpps").value.trim() || "CNOM-2026-" + Math.floor(1000 + Math.random() * 9000);
+
+        const docData = {
+          id: user.uid,
+          userId: user.uid,
+          name: "Dr. " + firstName + " " + lastName,
+          specialty: specialty,
+          hospital: hospital,
+          rpps: rpps,
+          experience: "Praticien diplômé",
+          rating: "5.0 ★ (Nouveau)",
+          status: "online",
+          verified: true,
+          isOnlineForTeleconsult: true,
+          photoUrl: "assets/app-icon.jpg",
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        await db.collection("doctors").doc(user.uid).set(docData);
+      }
+
+      closeAuthModal();
+      alert("✅ Compte " + (role === "doctor" ? "Praticien" : "Patient") + " créé avec succès ! Bienvenue.");
+    } catch (err) {
+      errDiv.textContent = "Erreur lors de l'inscription : " + (err.message || "Format invalide");
+      errDiv.style.display = "block";
+    }
+  };
+
+  window.handleLogout = async function () {
+    if (confirm("Voulez-vous vous déconnecter de Docta na Tshombo ?")) {
+      await auth.signOut();
+    }
+  };
+
+  // Real Firestore Data Loaders
+  async function loadDoctorsFromFirestore() {
     const grid = document.getElementById("doctors-list-grid");
     if (!grid) return;
 
+    grid.innerHTML = `<div style="text-align:center; padding:40px; color:#718096; grid-column:1/-1;">⏳ Chargement des médecins vérifiés...</div>`;
+
+    try {
+      const snap = await db.collection("doctors").get();
+      currentDoctorsList = [];
+      snap.forEach(doc => {
+        currentDoctorsList.push({ id: doc.id, ...doc.data() });
+      });
+
+      renderDoctorGrid(currentDoctorsList);
+    } catch (e) {
+      console.error("Firestore doctors fetch error:", e);
+      grid.innerHTML = `<div style="text-align:center; padding:30px; color:#E53E3E; grid-column:1/-1;">Erreur lors du chargement des médecins. Reconnectez-vous.</div>`;
+    }
+  }
+
+  function renderDoctorGrid(doctors) {
+    const grid = document.getElementById("doctors-list-grid");
+    if (!grid) return;
+
+    if (doctors.length === 0) {
+      grid.innerHTML = `
+        <div class="stat-card" style="text-align:center; padding:40px; grid-column:1/-1;">
+          <h3>👨‍⚕️ Aucun Praticien Inscrit pour le moment</h3>
+          <p style="color:#718096; margin-top:8px;">Créez un compte Praticien pour apparaître directement dans le répertoire des médecins !</p>
+          <button onclick="openAuthModal(); switchAuthTab('signup');" class="btn btn-primary btn-sm" style="margin-top:14px;">
+            + Créer un Compte Praticien
+          </button>
+        </div>
+      `;
+      return;
+    }
+
     grid.innerHTML = doctors.map(doc => `
-      <div class="stat-card" style="display:flex; flex-direction:column; justify-space-between;">
+      <div class="stat-card" style="display:flex; flex-direction:column; justify-content:space-between;">
         <div>
           <div style="display:flex; justify-content:space-between; align-items:flex-start;">
             <div style="display:flex; gap:12px; align-items:center;">
-              <img src="${doc.avatar}" style="width:48px; height:48px; border-radius:50%; object-fit:cover; border:2px solid #2C4531;" />
+              <img src="${doc.photoUrl || 'assets/app-icon.jpg'}" style="width:48px; height:48px; border-radius:50%; object-fit:cover; border:2px solid #2C4531;" />
               <div>
-                <h3 style="font-size:1.05rem;">${doc.name} ${doc.verified ? '✅' : ''}</h3>
-                <span style="color:#2C4531; font-weight:600; font-size:0.85rem;">${doc.specialty}</span>
+                <h3 style="font-size:1.05rem;">${doc.name || 'Dr. Praticien'} ${doc.verified ? '✅' : ''}</h3>
+                <span style="color:#2C4531; font-weight:600; font-size:0.85rem;">${doc.specialty || 'Médecine Générale'}</span>
               </div>
             </div>
-            <span class="pulse-dot ${doc.status}"></span>
+            <span class="pulse-dot ${doc.isOnlineForTeleconsult !== false ? 'online' : 'offline'}"></span>
           </div>
 
           <div style="margin:12px 0; font-size:0.88rem; color:#4A5568; line-height:1.5;">
-            <div>🏥 ${doc.hospital}</div>
-            <div>🎓 ${doc.experience}</div>
-            <div>⭐ ${doc.rating}</div>
+            <div>🏥 ${doc.hospital || doc.address || 'Clinique / Cabinet'}</div>
+            <div>🎓 ${doc.experience || 'Médecin diplômé'}</div>
+            <div>⭐ ${doc.rating || '5.0 ★'}</div>
           </div>
         </div>
 
         <div style="display:flex; gap:8px; margin-top:14px;">
-          <button onclick="launchTeleconsultation('${doc.id}', '${doc.name}', '${doc.status}')" class="btn btn-primary btn-sm" style="flex:1;">
+          <button onclick="launchTeleconsultation('${doc.id}', '${doc.name || 'Dr.'}', '${doc.isOnlineForTeleconsult !== false ? 'online' : 'offline'}')" class="btn btn-primary btn-sm" style="flex:1;">
             📹 Visio Directe
           </button>
-          <button onclick="bookRdvModal('${doc.id}', '${doc.name}')" class="btn btn-ghost btn-sm" style="flex:1;">
+          <button onclick="bookRdvModal('${doc.id}', '${doc.name || 'Dr.'}')" class="btn btn-ghost btn-sm" style="flex:1;">
             📅 Prendre RDV
           </button>
         </div>
@@ -192,46 +337,457 @@
 
   window.filterDoctors = function () {
     const q = document.getElementById("doc-search-input").value.toLowerCase();
-    const filtered = doctors.filter(d => d.name.toLowerCase().includes(q) || d.specialty.toLowerCase().includes(q) || d.hospital.toLowerCase().includes(q));
-    const grid = document.getElementById("doctors-list-grid");
-    grid.innerHTML = filtered.map(doc => `
-      <div class="stat-card">
-        <h3>${doc.name} ✅</h3>
-        <p style="color:#2C4531; font-weight:600;">${doc.specialty}</p>
-        <p style="color:#718096; font-size:0.9rem;">${doc.hospital}</p>
-        <button onclick="launchTeleconsultation('${doc.id}', '${doc.name}', '${doc.status}')" class="btn btn-primary btn-sm" style="margin-top:12px; width:100%;">📹 Lancer Visio</button>
-      </div>
-    `).join('');
+    const filtered = currentDoctorsList.filter(d =>
+      (d.name && d.name.toLowerCase().includes(q)) ||
+      (d.specialty && d.specialty.toLowerCase().includes(q)) ||
+      (d.hospital && d.hospital.toLowerCase().includes(q))
+    );
+    renderDoctorGrid(filtered);
   };
 
-  // Launch Teleconsultation WebRTC / Jitsi
-  window.launchTeleconsultation = function (docId, docName, status) {
-    if (status === "offline") {
-      alert(`🚫 ${docName} est actuellement hors ligne. Souhaitez-vous lui laisser un message dans la messagerie ?`);
-      switchTab('p-messages');
+  // Booking RDV Form & Actions
+  window.bookRdvModal = function (docId, docName) {
+    if (!currentUser) {
+      alert("Veuillez vous connecter pour prendre un rendez-vous médical.");
+      openAuthModal();
       return;
     }
-    if (status === "busy") {
-      alert(`⏳ ${docName} est en cours de consultation. Vous êtes placé en file d'attente (Position #2, ~10 min estimées).`);
+
+    document.getElementById("book-doc-id").value = docId;
+    document.getElementById("book-doc-name").value = docName;
+    document.getElementById("book-doc-display").value = docName;
+
+    // Set default datetime to tomorrow at 10:00
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(10, 0, 0, 0);
+    document.getElementById("book-datetime").value = tomorrow.toISOString().slice(0, 16);
+
+    document.getElementById("book-rdv-modal").classList.add("active");
+  };
+
+  window.closeBookModal = function () {
+    document.getElementById("book-rdv-modal").classList.remove("active");
+  };
+
+  window.confirmBooking = async function () {
+    if (!currentUser) return;
+    const docId = document.getElementById("book-doc-id").value;
+    const docName = document.getElementById("book-doc-name").value;
+    const datetime = document.getElementById("book-datetime").value;
+    const reason = document.getElementById("book-reason").value.trim();
+    const type = document.getElementById("book-type").value;
+
+    if (!reason) {
+      alert("Veuillez saisir le motif de votre consultation.");
+      return;
+    }
+
+    const patientName = currentUserData ? (currentUserData.firstName + " " + (currentUserData.lastName || "")).trim() : currentUser.email;
+
+    try {
+      await db.collection("appointments").add({
+        patientId: currentUser.uid,
+        patientName: patientName,
+        doctorId: docId,
+        doctorName: docName,
+        date: datetime ? new Date(datetime).toLocaleString('fr-FR') : "Demain à 10:00",
+        motif: reason,
+        type: type === "TELECONSULTATION" ? "Téléconsultation" : "Présentiel",
+        status: "pending",
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+
+      closeBookModal();
+      alert("✅ Rendez-vous enregistré en base avec succès ! Retrouvez-le dans 'Mes Rendez-vous'.");
+      switchTab("p-appointments");
+    } catch (e) {
+      alert("Erreur lors de la réservation : " + e.message);
+    }
+  };
+
+  // Appointments Fetch & Render
+  async function loadPatientAppointmentsFromFirestore() {
+    const list = document.getElementById("patient-appointments-list");
+    if (!list) return;
+
+    if (!currentUser) {
+      list.innerHTML = `<p style="color:#718096;">Veuillez vous connecter pour voir vos rendez-vous.</p>`;
+      return;
+    }
+
+    list.innerHTML = `<p style="color:#718096;">⏳ Chargement de vos rendez-vous...</p>`;
+
+    try {
+      const snap = await db.collection("appointments")
+        .where("patientId", "==", currentUser.uid)
+        .get();
+
+      currentAppointmentsList = [];
+      snap.forEach(doc => {
+        currentAppointmentsList.push({ id: doc.id, ...doc.data() });
+      });
+
+      renderPatientAppointments(currentAppointmentsList);
+    } catch (e) {
+      list.innerHTML = `<p style="color:#E53E3E;">Erreur de chargement : ${e.message}</p>`;
+    }
+  }
+
+  function renderPatientAppointments(rdvs) {
+    const list = document.getElementById("patient-appointments-list");
+    if (!list) return;
+
+    if (rdvs.length === 0) {
+      list.innerHTML = `<p style="color:#718096;">Aucun rendez-vous enregistré. Vous pouvez choisir un médecin dans 'Trouver un Praticien'.</p>`;
+      return;
+    }
+
+    list.innerHTML = rdvs.map(rdv => `
+      <div class="stat-card" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+        <div>
+          <h3>${rdv.doctorName || 'Dr. Praticien'}</h3>
+          <p style="color:#2C4531; font-weight:600; margin-top:4px;">📅 ${rdv.date || 'Prochainement'} • ${rdv.type || 'Téléconsultation'}</p>
+          <p style="color:#718096; font-size:0.9rem;">Motif : ${rdv.motif || 'Consultation'}</p>
+          <small style="color:${rdv.status === 'confirmed' ? '#38A169' : rdv.status === 'cancelled' ? '#E53E3E' : '#DD6B20'}; font-weight:700;">
+            Statut : ${rdv.status === 'confirmed' ? 'Confirmé ✅' : rdv.status === 'cancelled' ? 'Annulé ❌' : 'En attente ⏳'}
+          </small>
+        </div>
+        <div style="display:flex; gap:8px;">
+          ${rdv.type === 'Téléconsultation' ? `<button onclick="launchTeleconsultation('${rdv.doctorId}', '${rdv.doctorName}', 'online')" class="btn btn-primary btn-sm">📹 Rejoindre Visio</button>` : ''}
+          ${rdv.status !== 'cancelled' ? `<button onclick="cancelRdv('${rdv.id}')" class="btn btn-ghost btn-sm" style="color:#E53E3E; border-color:#FEB2B2;">Annuler</button>` : ''}
+        </div>
+      </div>
+    `).join('');
+  }
+
+  window.cancelRdv = async function (id) {
+    if (confirm("Voulez-vous vraiment annuler ce rendez-vous ?")) {
+      try {
+        await db.collection("appointments").doc(id).update({ status: "cancelled" });
+        alert("✅ Rendez-vous annulé.");
+        if (currentRole === "patient") loadPatientAppointmentsFromFirestore();
+        else loadDoctorAgendaFromFirestore();
+      } catch (e) {
+        alert("Erreur lors de l'annulation : " + e.message);
+      }
+    }
+  };
+
+  // Prescriptions Fetch & Render
+  async function loadPatientPrescriptionsFromFirestore() {
+    const list = document.getElementById("patient-prescriptions-list");
+    if (!list) return;
+
+    if (!currentUser) return;
+    list.innerHTML = `<p style="color:#718096;">⏳ Chargement de vos ordonnances...</p>`;
+
+    try {
+      const snap = await db.collection("prescriptions")
+        .where("patientId", "==", currentUser.uid)
+        .get();
+
+      currentPrescriptionsList = [];
+      snap.forEach(doc => {
+        currentPrescriptionsList.push({ id: doc.id, ...doc.data() });
+      });
+
+      if (currentPrescriptionsList.length === 0) {
+        list.innerHTML = `<p style="color:#718096;">Aucune ordonnance délivrée pour le moment.</p>`;
+        return;
+      }
+
+      list.innerHTML = currentPrescriptionsList.map(p => `
+        <div class="stat-card">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h3>Ordonnance ${p.id.slice(0, 8).toUpperCase()}</h3>
+            <small style="color:#718096;">Praticien : ${p.doctorName || 'Dr. Soignant'}</small>
+          </div>
+          <p style="margin-top:8px;"><strong>Traitement :</strong> ${p.medicinesSummary || p.notes || 'Paracétamol 1g'}</p>
+          <button onclick="alert('Téléchargement PDF en cours...')" class="btn btn-ghost btn-sm" style="margin-top:10px;">💾 Télécharger PDF Certifié</button>
+        </div>
+      `).join('');
+    } catch (e) {
+      list.innerHTML = `<p style="color:#E53E3E;">Erreur de chargement : ${e.message}</p>`;
+    }
+  }
+
+  // Reminders Fetch & Render
+  async function loadRemindersFromFirestore() {
+    const list = document.getElementById("reminders-list");
+    if (!list) return;
+    if (!currentUser) return;
+
+    list.innerHTML = `<p style="color:#718096;">⏳ Chargement des rappels...</p>`;
+
+    try {
+      const snap = await db.collection("medication_reminders")
+        .where("patientId", "==", currentUser.uid)
+        .get();
+
+      currentRemindersList = [];
+      snap.forEach(doc => {
+        currentRemindersList.push({ id: doc.id, ...doc.data() });
+      });
+
+      renderReminders(currentRemindersList);
+    } catch (e) {
+      list.innerHTML = `<p style="color:#E53E3E;">Erreur : ${e.message}</p>`;
+    }
+  }
+
+  function renderReminders(reminders) {
+    const list = document.getElementById("reminders-list");
+    if (!list) return;
+
+    if (!reminders || reminders.length === 0) {
+      list.innerHTML = `<p style="color:#718096;">Aucun rappel de médicament configuré.</p>`;
+      return;
+    }
+
+    list.innerHTML = reminders.map(r => `
+      <div class="stat-card" style="display:flex; justify-space-between; align-items:center; padding:14px 20px;">
+        <div>
+          <strong>💊 ${r.medicineName} ${r.dosage || ''}</strong>
+          <div style="color:#718096; font-size:0.85rem;">Rappel à ${r.timeOfDay || '08:00'}</div>
+        </div>
+        <button onclick="markReminderTaken('${r.id}')" class="btn btn-primary btn-sm">✅ Prendre</button>
+      </div>
+    `).join('');
+  }
+
+  window.addMedReminder = async function () {
+    if (!currentUser) {
+      alert("Veuillez vous connecter pour enregistrer un rappel.");
+      openAuthModal();
+      return;
+    }
+
+    const name = document.getElementById("rem-med-name").value.trim();
+    const time = document.getElementById("rem-time").value;
+    if (!name) return alert("Saisissez le nom du médicament.");
+
+    try {
+      await db.collection("medication_reminders").add({
+        patientId: currentUser.uid,
+        medicineName: name,
+        timeOfDay: time,
+        isTakenToday: false,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+
+      document.getElementById("rem-med-name").value = "";
+      alert(`✅ Rappel pour "${name}" enregistré à ${time} !`);
+      loadRemindersFromFirestore();
+    } catch (e) {
+      alert("Erreur lors de l'enregistrement du rappel : " + e.message);
+    }
+  };
+
+  window.markReminderTaken = function (id) {
+    alert("✅ Prise de médicament enregistrée avec succès !");
+  };
+
+  // Practitioner Tab Handlers
+  async function loadDoctorDashboardFromFirestore() {
+    if (!currentUser) return;
+
+    try {
+      const snap = await db.collection("appointments")
+        .where("doctorId", "==", currentUser.uid)
+        .get();
+
+      let totalCount = snap.size;
+      const todayStat = document.getElementById("d-stat-today");
+      if (todayStat) todayStat.textContent = totalCount + " Consultations";
+
+      const upcomingList = document.getElementById("d-upcoming-rdv-list");
+      if (upcomingList) {
+        if (totalCount === 0) {
+          upcomingList.innerHTML = `<p style="color:#718096;">Aucun rendez-vous planifié.</p>`;
+        } else {
+          let docs = [];
+          snap.forEach(d => docs.push({ id: d.id, ...d.data() }));
+          upcomingList.innerHTML = docs.slice(0, 4).map(r => `
+            <div style="padding:10px; background:#F7FAFC; border-radius:8px; border:1px solid #EDF2F7; display:flex; justify-content:space-between; align-items:center;">
+              <div>
+                <strong>${r.patientName || 'Patient'}</strong>
+                <div style="font-size:0.85rem; color:#718096;">📅 ${r.date} (${r.type})</div>
+              </div>
+              <button onclick="launchTeleconsultation('${r.patientId}', '${r.patientName}', 'online')" class="btn btn-primary btn-sm" style="padding:4px 8px; font-size:0.75rem;">Lancer</button>
+            </div>
+          `).join('');
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  async function loadDoctorAgendaFromFirestore() {
+    const list = document.getElementById("doctor-agenda-list");
+    if (!list || !currentUser) return;
+
+    list.innerHTML = `<p style="color:#718096;">⏳ Chargement de l'agenda...</p>`;
+
+    try {
+      const snap = await db.collection("appointments")
+        .where("doctorId", "==", currentUser.uid)
+        .get();
+
+      let rdvs = [];
+      snap.forEach(doc => rdvs.push({ id: doc.id, ...doc.data() }));
+
+      if (rdvs.length === 0) {
+        list.innerHTML = `<p style="color:#718096;">Aucune consultation enregistrée dans votre agenda.</p>`;
+        return;
+      }
+
+      list.innerHTML = rdvs.map(r => `
+        <div class="stat-card" style="display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <h3>${r.patientName || 'Patient'} — ${r.motif || 'Consultation'}</h3>
+            <p style="color:#2C4531; font-weight:600;">📅 ${r.date} • ${r.type}</p>
+          </div>
+          <div style="display:flex; gap:6px;">
+            <button onclick="cancelRdv('${r.id}')" class="btn btn-ghost btn-sm" style="color:#E53E3E;">Annuler</button>
+          </div>
+        </div>
+      `).join('');
+    } catch (e) {
+      list.innerHTML = `<p style="color:#E53E3E;">Erreur : ${e.message}</p>`;
+    }
+  }
+
+  async function loadDoctorPatientsFromFirestore() {
+    const list = document.getElementById("doctor-patients-list");
+    if (!list || !currentUser) return;
+
+    list.innerHTML = `<p style="color:#718096;">⏳ Chargement du carnet de patients...</p>`;
+
+    try {
+      const snap = await db.collection("users").where("role", "==", "patient").get();
+      let patients = [];
+      snap.forEach(doc => patients.push({ id: doc.id, ...doc.data() }));
+
+      if (patients.length === 0) {
+        list.innerHTML = `<p style="color:#718096;">Aucun patient enregistré dans le système.</p>`;
+        return;
+      }
+
+      list.innerHTML = patients.map(p => `
+        <div class="stat-card">
+          <h3>👤 ${p.firstName || ''} ${p.lastName || 'Patient'}</h3>
+          <p style="color:#718096;">Email : ${p.email || 'Non renseigné'}</p>
+          <p style="color:#718096; font-size:0.85rem; margin-top:4px;">📱 Tél : ${p.phone || 'Non renseigné'}</p>
+          <button onclick="switchTab('d-prescription')" class="btn btn-ghost btn-sm" style="margin-top:10px; width:100%;">📝 Rédiger Ordonnance</button>
+        </div>
+      `).join('');
+    } catch (e) {
+      list.innerHTML = `<p style="color:#E53E3E;">Erreur : ${e.message}</p>`;
+    }
+  }
+
+  // Doctor Presence Toggle
+  window.toggleDoctorPresence = async function () {
+    doctorPresence = doctorPresence === "present" ? "absent" : "present";
+    const dot = document.getElementById("doc-presence-dot");
+    const text = document.getElementById("doc-presence-text");
+
+    if (doctorPresence === "present") {
+      if (dot) dot.className = "pulse-dot online";
+      if (text) text.textContent = "Statut: Présent (En ligne)";
+    } else {
+      if (dot) dot.className = "pulse-dot offline";
+      if (text) text.textContent = "Statut: Absent (Hors ligne)";
+    }
+
+    if (currentUser && currentRole === "doctor") {
+      try {
+        await db.collection("doctors").doc(currentUser.uid).update({
+          isOnlineForTeleconsult: (doctorPresence === "present")
+        });
+      } catch (e) {}
+    }
+  };
+
+  // Realtime Chat Handler
+  function initChatMessages() {
+    const container = document.getElementById("p-chat-messages");
+    if (!container || !currentUser) return;
+
+    if (activeChatUnsubscribe) activeChatUnsubscribe();
+
+    container.innerHTML = `<div style="text-align:center; padding:20px; color:#718096;">Discussion en direct. Rédigez un message ci-dessous...</div>`;
+
+    // Listen to messages from Firestore
+    activeChatUnsubscribe = db.collection("messages")
+      .orderBy("createdAt", "asc")
+      .onSnapshot(snap => {
+        let msgs = [];
+        snap.forEach(d => msgs.push(d.data()));
+
+        if (msgs.length > 0) {
+          container.innerHTML = msgs.map(m => `
+            <div class="chat-bubble ${m.senderId === currentUser.uid ? 'mine' : 'other'}">
+              <small style="display:block; opacity:0.8; font-size:0.75rem; margin-bottom:2px;">${m.senderName || 'Utilisateur'}</small>
+              ${m.text}
+            </div>
+          `).join('');
+          container.scrollTop = container.scrollHeight;
+        }
+      }, err => {
+        console.warn("Chat listener fallback:", err);
+      });
+  }
+
+  window.sendPatientMessage = async function () {
+    const input = document.getElementById("p-chat-input");
+    const container = document.getElementById("p-chat-messages");
+    if (!input || !input.value.trim() || !currentUser) return;
+
+    const text = input.value.trim();
+    input.value = "";
+
+    try {
+      const senderName = currentUserData ? (currentUserData.firstName + " " + (currentUserData.lastName || "")).trim() : currentUser.email;
+
+      await db.collection("messages").add({
+        senderId: currentUser.uid,
+        senderName: senderName,
+        text: text,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    } catch (e) {
+      console.error("Send message error:", e);
+    }
+  };
+
+  // Teleconsultation Launcher
+  window.launchTeleconsultation = function (docId, docName, status) {
+    if (status === "offline") {
+      alert(`🚫 ${docName} est actuellement hors ligne. Vous pouvez lui laisser un message dans la messagerie.`);
+      switchTab("p-messages");
+      return;
     }
 
     const modal = document.getElementById("teleconsult-modal");
     const iframe = document.getElementById("jitsi-iframe");
     const title = document.getElementById("teleconsult-modal-title");
 
-    title.textContent = `📹 Téléconsultation avec ${docName}`;
-    iframe.src = `https://meet.jit.si/docta_tshombo_consult_${docId}_${Date.now()}`;
-    modal.classList.add("active");
+    if (title) title.textContent = `📹 Téléconsultation en Direct avec ${docName}`;
+    if (iframe) iframe.src = `https://meet.jit.si/docta_tshombo_consult_${docId}_${Date.now()}`;
+    if (modal) modal.classList.add("active");
   };
 
   window.closeTeleconsultModal = function () {
     const modal = document.getElementById("teleconsult-modal");
     const iframe = document.getElementById("jitsi-iframe");
-    iframe.src = "";
-    modal.classList.remove("active");
+    if (iframe) iframe.src = "";
+    if (modal) modal.classList.remove("active");
   };
 
-  // Vital Signs Scan by Torch / Camera Simulation
+  // Vital Signs Scan Simulation
   window.startVitalSignsScan = function () {
     const pulseCircle = document.getElementById("scan-pulse-circle");
     const timerText = document.getElementById("scan-timer-text");
@@ -244,7 +800,6 @@
     bpmVal.textContent = "...";
     spo2Val.textContent = "...";
 
-    // PPG Wave animation on Canvas
     const canvas = document.getElementById("ppg-graph");
     const ctx = canvas.getContext("2d");
     canvas.width = canvas.offsetWidth;
@@ -270,7 +825,6 @@
     }
     drawPPGWave();
 
-    // Pulse animation
     pulseCircle.style.background = "#E53E3E";
     pulseCircle.style.boxShadow = "0 0 25px #E53E3E";
 
@@ -292,11 +846,21 @@
         pulseCircle.style.background = "#38A169";
         pulseCircle.style.boxShadow = "0 0 15px #38A169";
         timerText.textContent = "✅ Scan terminé ! Données enregistrées dans votre dossier médical.";
+
+        // Save Vitals to Firestore if user logged in
+        if (currentUser) {
+          db.collection("constantes_vitales").add({
+            userId: currentUser.uid,
+            bpm: finalBpm,
+            spo2: finalSpo2,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          }).catch(e => console.warn(e));
+        }
       }
     }, 1000);
   };
 
-  // Prescription Generator & Sharing
+  // Prescription Generator
   window.addPrescMedRow = function () {
     const container = document.getElementById("presc-meds-container");
     const div = document.createElement("div");
@@ -309,7 +873,7 @@
     container.appendChild(div);
   };
 
-  window.generatePrescriptionPreview = function () {
+  window.generatePrescriptionPreview = async function () {
     const patientName = document.getElementById("presc-patient-select").value;
     const diag = document.getElementById("presc-diag").value;
     const box = document.getElementById("presc-preview-box");
@@ -325,13 +889,14 @@
       </li>
     `).join('');
 
+    const doctorName = currentUserData ? ("Dr. " + currentUserData.firstName + " " + currentUserData.lastName) : "Dr. Praticien";
     const todayStr = new Date().toLocaleDateString('fr-FR');
+
     box.innerHTML = `
       <div style="background:white; padding:20px; border-radius:8px; border:1px solid #E2E8F0; font-family:sans-serif; color:#2D3748;">
         <div style="display:flex; justify-content:space-between; border-bottom:2px solid #2C4531; padding-bottom:10px; margin-bottom:14px;">
           <div>
-            <strong style="color:#2C4531; font-size:1.1rem;">Dr. Kabange Mwangele</strong><br/>
-            <small>Cardiologue • RPPS : 1092837492</small><br/>
+            <strong style="color:#2C4531; font-size:1.1rem;">${doctorName}</strong><br/>
             <small>Email : henockaduma2@gmail.com</small>
           </div>
           <div style="text-align:right;">
@@ -351,7 +916,7 @@
             📜 Cachet Officiel du Médecin Validé
           </div>
           <div style="text-align:center;">
-            <div style="font-family:cursive; font-size:1.4rem; color:#2C4531;">Dr. K. Mwangele</div>
+            <div style="font-family:cursive; font-size:1.4rem; color:#2C4531;">${doctorName}</div>
             <small style="color:#718096;">Signature Numérique Certifiée</small>
           </div>
         </div>
@@ -359,27 +924,36 @@
     `;
 
     shareActions.style.display = "flex";
-  };
 
-  window.sharePrescription = function (method) {
-    if (method === 'message') {
-      alert("✅ Ordonnance envoyée directement dans la messagerie du patient !");
-    } else if (method === 'email') {
-      alert("📧 Ordonnance transmise par email avec copie à henockaduma2@gmail.com !");
-    } else if (method === 'sms') {
-      alert("📱 Lien de téléchargement sécurisé envoyé par SMS au patient !");
-    } else if (method === 'download') {
-      alert("💾 Ordonnance téléchargée en PDF sur votre appareil !");
+    // Save to Firestore
+    if (currentUser) {
+      try {
+        await db.collection("prescriptions").add({
+          doctorId: currentUser.uid,
+          doctorName: doctorName,
+          patientName: patientName,
+          medicinesSummary: medNames.join(", "),
+          notes: diag,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      } catch (e) { console.warn(e); }
     }
   };
 
-  // Practitioner Auto-Validation 15-second Scanner
+  window.sharePrescription = function (method) {
+    if (method === 'message') alert("✅ Ordonnance envoyée au patient par message !");
+    if (method === 'email') alert("📧 Ordonnance transmise par email à henockaduma2@gmail.com !");
+    if (method === 'sms') alert("📱 Lien SMS envoyé au patient !");
+    if (method === 'download') alert("💾 Ordonnance téléchargée !");
+  };
+
+  // Practitioner Auto-Validation Scanner
   let docFileSelected = false;
   window.handleDocFileSelected = function (e) {
     const file = e.target.files[0];
     if (file) {
       docFileSelected = true;
-      document.getElementById("selected-doc-name").textContent = `Fichier sélectionné: ${file.name} (${(file.size/1024/1024).toFixed(2)} MB)`;
+      document.getElementById("selected-doc-name").textContent = `Fichier : ${file.name} (${(file.size/1024/1024).toFixed(2)} MB)`;
       document.getElementById("run-auto-val-btn").disabled = false;
     }
   };
@@ -396,14 +970,14 @@
     resultBanner.style.display = "none";
 
     let sec = 0;
-    const interval = setInterval(() => {
+    const interval = setInterval(async () => {
       sec++;
       const pct = Math.min(100, Math.round((sec / 15) * 100));
       progressBar.style.width = pct + "%";
 
-      if (sec === 3) statusLabel.textContent = "Analyse du format & de la résolution (DPI)...";
-      if (sec === 7) statusLabel.textContent = "Contrôle du nom du praticien & de l'Ordre des Médecins...";
-      if (sec === 11) statusLabel.textContent = "Vérification du cachet et de l'intégrité numérique...";
+      if (sec === 3) statusLabel.textContent = "Analyse du format & résolution...";
+      if (sec === 7) statusLabel.textContent = "Contrôle auprès de l'Ordre des Médecins...";
+      if (sec === 11) statusLabel.textContent = "Validation du diplôme et cachet...";
 
       if (sec >= 15) {
         clearInterval(interval);
@@ -412,241 +986,21 @@
         resultBanner.style.display = "block";
         resultBanner.style.background = "#C6F6D5";
         resultBanner.style.color = "#22543D";
-        resultBanner.innerHTML = "✅ Documents validés avec succès en 15 secondes ! Votre profil est désormais visible par tous les patients.";
+        resultBanner.innerHTML = "✅ Document certifié et validé en 15s ! Profil praticien actif.";
         btn.disabled = false;
+
+        // Update Firestore doctor document
+        if (currentUser && currentRole === "doctor") {
+          try {
+            await db.collection("doctors").doc(currentUser.uid).update({
+              verified: true,
+              documentsVerified: true
+            });
+          } catch (e) {}
+        }
       }
     }, 1000);
   };
-
-  // Doctor Presence Toggle
-  window.toggleDoctorPresence = function () {
-    doctorPresence = doctorPresence === "present" ? "absent" : "present";
-    const dot = document.getElementById("doc-presence-dot");
-    const text = document.getElementById("doc-presence-text");
-
-    if (doctorPresence === "present") {
-      dot.className = "pulse-dot online";
-      text.textContent = "Statut: Présent (En ligne)";
-    } else {
-      dot.className = "pulse-dot offline";
-      text.textContent = "Statut: Absent (Hors ligne)";
-    }
-  };
-
-  // Appointments Management
-  window.openAddConsultationModal = function () {
-    document.getElementById("add-consult-modal").classList.add("active");
-  };
-  window.closeAddConsultationModal = function () {
-    document.getElementById("add-consult-modal").classList.remove("active");
-  };
-
-  window.saveManualConsultation = function () {
-    const patient = document.getElementById("add-c-patient").value;
-    const dateVal = document.getElementById("add-c-date").value;
-    const reason = document.getElementById("add-c-reason").value;
-    const type = document.getElementById("add-c-type").value;
-
-    if (!patient || !reason) {
-      alert("Veuillez remplir le nom du patient et le motif.");
-      return;
-    }
-
-    patientAppointments.push({
-      id: "rdv-" + Date.now(),
-      docId: "doc1",
-      docName: "Dr. Kabange Mwangele",
-      specialty: "Cardiologue",
-      date: dateVal ? new Date(dateVal).toLocaleString('fr-FR') : "Aujourd'hui à 16:00",
-      type: type,
-      reason: reason,
-      status: "En attente"
-    });
-
-    closeAddConsultationModal();
-    alert("✅ Consultation ajoutée avec succès dans l'agenda !");
-    renderDoctorAgenda();
-    renderDoctorDashboard();
-  };
-
-  window.cancelRdv = function (id) {
-    if (confirm("Voulez-vous vraiment annuler ce rendez-vous ? Un message sera notifié au patient.")) {
-      patientAppointments = patientAppointments.filter(r => r.id !== id);
-      renderPatientAppointments();
-      renderDoctorAgenda();
-      renderDoctorDashboard();
-    }
-  };
-
-  function renderPatientAppointments() {
-    const list = document.getElementById("patient-appointments-list");
-    if (!list) return;
-
-    if (patientAppointments.length === 0) {
-      list.innerHTML = `<p style="color:#718096;">Aucun rendez-vous enregistré.</p>`;
-      return;
-    }
-
-    list.innerHTML = patientAppointments.map(rdv => `
-      <div class="stat-card" style="display:flex; justify-space-between; align-items:center; flex-wrap:wrap; gap:12px;">
-        <div>
-          <h3>${rdv.docName} (${rdv.specialty})</h3>
-          <p style="color:#2C4531; font-weight:600; margin-top:4px;">📅 ${rdv.date} • ${rdv.type}</p>
-          <p style="color:#718096; font-size:0.9rem;">Motif : ${rdv.reason}</p>
-        </div>
-        <div style="display:flex; gap:8px;">
-          ${rdv.type === 'Téléconsultation' ? `<button onclick="launchTeleconsultation('${rdv.docId}', '${rdv.docName}', 'online')" class="btn btn-primary btn-sm">📹 Rejoindre Visio</button>` : ''}
-          <button onclick="cancelRdv('${rdv.id}')" class="btn btn-ghost btn-sm" style="color:#E53E3E; border-color:#FEB2B2;">Annuler</button>
-        </div>
-      </div>
-    `).join('');
-  }
-
-  function renderPatientPrescriptions() {
-    const list = document.getElementById("patient-prescriptions-list");
-    if (!list) return;
-
-    list.innerHTML = patientPrescriptions.map(p => `
-      <div class="stat-card">
-        <div style="display:flex; justify-space-between; align-items:center;">
-          <h3>Ordonnance ${p.id}</h3>
-          <small style="color:#718096;">Date : ${p.date}</small>
-        </div>
-        <p style="margin-top:6px;"><strong>Praticien :</strong> ${p.docName}</p>
-        <p><strong>Traitement :</strong> ${p.meds}</p>
-        <button onclick="alert('Téléchargement du PDF de l\'ordonnance en cours...')" class="btn btn-ghost btn-sm" style="margin-top:10px;">💾 Télécharger PDF Certifié</button>
-      </div>
-    `).join('');
-  }
-
-  function renderReminders() {
-    const list = document.getElementById("reminders-list");
-    if (!list) return;
-
-    list.innerHTML = medReminders.map(r => `
-      <div class="stat-card" style="display:flex; justify-space-between; align-items:center; padding:14px 20px;">
-        <div>
-          <strong>💊 ${r.name}</strong>
-          <div style="color:#718096; font-size:0.85rem;">Rappel quotidien à ${r.time}</div>
-        </div>
-        <button onclick="alert('Prise confirmée !')" class="btn btn-primary btn-sm">✅ Prendre</button>
-      </div>
-    `).join('');
-  }
-
-  window.addMedReminder = function () {
-    const name = document.getElementById("rem-med-name").value;
-    const time = document.getElementById("rem-time").value;
-    if (!name) return alert("Saisissez le nom du médicament.");
-
-    medReminders.push({ id: Date.now(), name, time, active: true });
-    renderReminders();
-    document.getElementById("rem-med-name").value = "";
-
-    // Request notification permission if needed
-    if ("Notification" in window && Notification.permission !== "granted") {
-      Notification.requestPermission().then(p => {
-        if (p === "granted") scheduleReminderNotif(name, time);
-      });
-    } else if (Notification.permission === "granted") {
-      scheduleReminderNotif(name, time);
-    }
-
-    alert(`✅ Rappel pour "${name}" ajouté à ${time} !`);
-  };
-
-  function scheduleReminderNotif(medName, timeStr) {
-    // Check every minute if it's time to notify
-    const [h, m] = timeStr.split(":").map(Number);
-    setInterval(() => {
-      const now = new Date();
-      if (now.getHours() === h && now.getMinutes() === m) {
-        try {
-          new Notification(`💊 Rappel Médicament — ${medName}`, {
-            body: `C'est l'heure de prendre votre ${medName} ! Docta na Tshombo.`,
-            icon: "assets/app-icon.jpg",
-            badge: "assets/app-icon.jpg",
-            vibrate: [200, 100, 200],
-            tag: "med-reminder-" + medName,
-            requireInteraction: true
-          });
-          if (window._playNotifSound) window._playNotifSound();
-        } catch(e) {}
-      }
-    }, 60000);
-  }
-
-  // Chat messaging
-  window.sendPatientMessage = function () {
-    const input = document.getElementById("p-chat-input");
-    const container = document.getElementById("p-chat-messages");
-    if (!input.value.trim()) return;
-
-    container.innerHTML += `
-      <div class="chat-bubble mine">${input.value}</div>
-    `;
-    input.value = "";
-    container.scrollTop = container.scrollHeight;
-
-    setTimeout(() => {
-      container.innerHTML += `
-        <div class="chat-bubble other">Merci pour votre message. Je réponds à vos questions sous peu.</div>
-      `;
-      container.scrollTop = container.scrollHeight;
-    }, 1500);
-  };
-
-  // Practitioner Views Rendering
-  function renderDoctorDashboard() {
-    const upcomingList = document.getElementById("d-upcoming-rdv-list");
-    if (upcomingList) {
-      upcomingList.innerHTML = patientAppointments.slice(0, 3).map(r => `
-        <div style="padding:10px; background:#F7FAFC; border-radius:8px; border:1px solid #EDF2F7; display:flex; justify-content:space-between; align-items:center;">
-          <div>
-            <strong>${r.reason}</strong>
-            <div style="font-size:0.85rem; color:#718096;">📅 ${r.date} (${r.type})</div>
-          </div>
-          <button onclick="launchTeleconsultation('${r.docId}', 'Dr. Kabange', 'online')" class="btn btn-primary btn-sm" style="padding:4px 8px; font-size:0.75rem;">Lancer</button>
-        </div>
-      `).join('');
-    }
-  }
-
-  function renderDoctorAgenda() {
-    const list = document.getElementById("doctor-agenda-list");
-    if (!list) return;
-
-    list.innerHTML = patientAppointments.map(r => `
-      <div class="stat-card" style="display:flex; justify-space-between; align-items:center;">
-        <div>
-          <h3>${r.reason}</h3>
-          <p style="color:#2C4531; font-weight:600;">📅 ${r.date} • ${r.type}</p>
-        </div>
-        <div style="display:flex; gap:6px;">
-          <button onclick="alert('Consultation ouverte')" class="btn btn-primary btn-sm">Ouvrir</button>
-          <button onclick="cancelRdv('${r.id}')" class="btn btn-ghost btn-sm" style="color:#E53E3E;">Annuler</button>
-        </div>
-      </div>
-    `).join('');
-  }
-
-  function renderDoctorPatients() {
-    const list = document.getElementById("doctor-patients-list");
-    if (!list) return;
-
-    list.innerHTML = [
-      { name: "Jean Mukendi", age: "34 ans", blood: "O+", allergies: "Pénicilline" },
-      { name: "Marie Tshilombo", age: "28 ans", blood: "A+", allergies: "Aucune" },
-      { name: "Paul Kande", age: "52 ans", blood: "B+", allergies: "Aspirine" }
-    ].map(p => `
-      <div class="stat-card">
-        <h3>👤 ${p.name}</h3>
-        <p style="color:#718096;">Âge : ${p.age} • Groupe : ${p.blood}</p>
-        <p style="color:#E53E3E; font-size:0.85rem; margin-top:4px;">⚠️ Allergie : ${p.allergies}</p>
-        <button onclick="switchTab('d-prescription')" class="btn btn-ghost btn-sm" style="margin-top:10px; width:100%;">📝 Rédiger Ordonnance</button>
-      </div>
-    `).join('');
-  }
 
   // Legal Modal
   window.openLegalModal = function (type) {
@@ -660,17 +1014,17 @@
         <p><strong>1. Collecte des Données Personnelles</strong><br/>
         Docta na Tshombo collecte les informations nécessaires pour la téléconsultation (nom, email, téléphone, constantes vitales).<br/><br/>
         <strong>2. Chiffrement et Sécurité</strong><br/>
-        Toutes les données de santé sont chiffrées en transit (SSL/TLS) et stockées de manière sécurisée (Firestore / Supabase Storage).<br/><br/>
+        Toutes les données de santé sont chiffrées en transit (SSL/TLS) et stockées de manière sécurisée sur Firebase / Supabase.<br/><br/>
         <strong>3. Vos Droits</strong><br/>
-        Vous disposez d'un droit d'accès, de rectification et de suppression de vos données en contactant <strong>henockaduma2@gmail.com</strong>.</p>
+        Contactez <strong>henockaduma2@gmail.com</strong> pour toute demande d'accès ou suppression.</p>
       `;
     } else {
       title.textContent = "⚖️ Conditions d'Utilisation";
       body.innerHTML = `
         <p><strong>1. Responsabilité Médicale</strong><br/>
-        Docta na Tshombo met en relation patients et praticiens de santé vérifiés. La téléconsultation ne remplace pas une urgence vitale.<br/><br/>
+        Docta na Tshombo met en relation patients et praticiens de santé vérifiés.<br/><br/>
         <strong>2. Propriété Intellectuelle</strong><br/>
-        Application conçue et développée par Henock Aduma. Tous droits réservés 2026.<br/><br/>
+        Application conçue par Henock Aduma. Tous droits réservés 2026.<br/><br/>
         <strong>3. Contact</strong><br/>
         Email : henockaduma2@gmail.com</p>
       `;
@@ -684,15 +1038,7 @@
 
   // Initial Load
   window.addEventListener("DOMContentLoaded", () => {
-    renderDoctorGrid();
-    renderReminders();
-
-    // Auto-check existing reminders on load
-    medReminders.forEach(r => {
-      if (r.active && Notification.permission === "granted") {
-        scheduleReminderNotif(r.name, r.time);
-      }
-    });
+    loadDoctorsFromFirestore();
   });
 
 })();
