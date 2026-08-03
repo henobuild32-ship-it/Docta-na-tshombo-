@@ -4,15 +4,14 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Docta na Tshombo — Consultez un médecin depuis votre téléphone</title>
-  <meta name="description" content="Docta na Tshombo : téléconsultation, prise de rendez-vous et rappels de médicaments, pensés pour la RDC. Android et iPhone." />
+  <meta name="description" content="Docta na Tshombo : téléconsultation, prise de rendez-vous et rappels de médicaments, pensés pour la RDC. Android et Web." />
   <link rel="manifest" href="manifest.webmanifest" />
-  <meta name="theme-color" content="#2C4531" />
+  <meta name="theme-color" content="#1B3A2B" />
   <meta property="og:title" content="Docta na Tshombo" />
   <meta property="og:description" content="Consultez un médecin depuis votre téléphone. Pensé pour la RDC." />
   <meta property="og:image" content="assets/app-icon.jpg" />
   <link rel="icon" type="image/jpeg" href="assets/app-icon.jpg" />
   <link rel="apple-touch-icon" href="assets/app-icon.jpg" />
-  <!-- iOS / PWA : démarrage plein écran et status bar -->
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -28,44 +27,41 @@
         <span class="brand-name">Docta na Tshombo</span>
       </a>
       <nav class="nav" aria-label="Navigation principale">
-        <a href="app.html">Lancer l'app Web</a>
         <a href="#fonctionnalites">Fonctionnalités</a>
+        <a href="#teleconsultation">Téléconsultation</a>
         <a href="#parcours">Comment ça marche</a>
-        <a href="#confiance">Confiance</a>
-        <a href="#contact">Contact</a>
+        <a href="#telechargement">Télécharger</a>
       </nav>
-      <div style="display:flex; gap:10px; align-items:center;">
-        <a href="app.html" class="btn btn-primary btn-sm nav-cta">🌐 Lancer en ligne</a>
-        <button type="button" class="btn btn-ghost btn-sm nav-cta" data-apk-download>📲 Télécharger APK</button>
+      <div class="header-actions">
+        <a href="app.html" class="btn btn-primary btn-sm">Lancer l'app Web</a>
+        <button type="button" class="btn btn-secondary btn-sm" data-apk-download>📲 APK Android</button>
       </div>
     </div>
   </header>
 
   <main>
-    <!-- ============ HERO — un seul objectif ============ -->
+    <!-- ============ HERO ============ -->
     <section class="hero">
       <div class="container hero-inner">
         <div class="hero-text">
           <span class="badge">🇨🇩 Pensé pour la RDC • Web & Android</span>
-          <h1>Consultez un médecin depuis votre téléphone ou navigateur.</h1>
+          <h1>Votre santé à portée de <span>clic</span> et de <span>doigt</span>.</h1>
           <p class="hero-sub">
-            Téléconsultation vidéo, prise de rendez-vous, messagerie et rappels de
-            médicaments — disponibles instantanément en ligne sans installation ou via l'application Android.
+            Téléconsultation vidéo sécurisée, prise de rendez-vous, ordonnances numériques et rappels de médicaments — le tout dans une application simple et rapide.
           </p>
-          <div class="hero-actions" style="display: flex; gap: 14px; flex-wrap: wrap;">
+          <div class="hero-actions">
             <a href="app.html" class="btn btn-primary btn-lg">
-              <svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
-              Accéder à l'application web (Sans installation)
+              🌐 Essayer l'application Web
             </a>
             <button type="button" class="btn btn-secondary btn-lg" data-apk-download>
-              <svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-              Télécharger l'application APK
+              📲 Télécharger l'APK Android
             </button>
           </div>
           <ul class="hero-meta">
             <li>Français • Lingala • Swahili</li>
-            <li>Accès instantané ou Android</li>
-            <li>Créateur : Henock Aduma (henockaduma2@gmail.com)</li>
+            <li>Médecins vérifiés</li>
+            <li>Données sécurisées</li>
+            <li>Créateur : Henock Aduma</li>
           </ul>
         </div>
         <div class="hero-visual">
@@ -80,53 +76,7 @@
       </div>
     </section>
 
-    <!-- ============ DÉMONSTRATION DU PARCOURS ============ -->
-    <section class="journey section" id="parcours">
-      <div class="container">
-        <h2 class="section-title">Comment ça marche ?</h2>
-        <p class="section-sub">Du téléchargement à la consultation, en 6 étapes simples.</p>
-        <div class="journey-grid">
-          <article class="jstep">
-            <span class="jstep-num">1</span>
-            <span class="jstep-ico">📲</span>
-            <h3>Installez l'application</h3>
-            <p>Téléchargez l'APK Android ou ajoutez l'application Web sur iPhone.</p>
-          </article>
-          <article class="jstep">
-            <span class="jstep-num">2</span>
-            <span class="jstep-ico">🔍</span>
-            <h3>Recherchez un médecin</h3>
-            <p>Parcourez les praticiens par spécialité, note et disponibilité.</p>
-          </article>
-          <article class="jstep">
-            <span class="jstep-num">3</span>
-            <span class="jstep-ico">👤</span>
-            <h3>Consultez le profil</h3>
-            <p>Diplômes, universités, formations et avis vérifiés.</p>
-          </article>
-          <article class="jstep">
-            <span class="jstep-num">4</span>
-            <span class="jstep-ico">📅</span>
-            <h3>Prenez rendez-vous</h3>
-            <p>En présentiel ou en téléconsultation, en 3 étapes.</p>
-          </article>
-          <article class="jstep">
-            <span class="jstep-num">5</span>
-            <span class="jstep-ico">💺</span>
-            <h3>Salle d'attente</h3>
-            <p>Recevez votre rappel et rejoignez la consultation à l'heure.</p>
-          </article>
-          <article class="jstep">
-            <span class="jstep-num">6</span>
-            <span class="jstep-ico">🩺</span>
-            <h3>Consultation</h3>
-            <p>Visio, ordonnance numérique et suivi thérapeutique.</p>
-          </article>
-        </div>
-      </div>
-    </section>
-
-    <!-- ============ FONCTIONNALITÉS (honnêtes) ============ -->
+    <!-- ============ FONCTIONNALITÉS ============ -->
     <section class="features section" id="fonctionnalites">
       <div class="container">
         <h2 class="section-title">Ce que fait l'application</h2>
@@ -135,7 +85,7 @@
           <article class="card">
             <span class="card-icon">🎥</span>
             <h3>Téléconsultation vidéo</h3>
-            <p>Rejoignez votre médecin en visio en un clic, où que vous soyez.</p>
+            <p>Rejoignez votre médecin en visio en un clic, où que vous soyez en RDC.</p>
           </article>
           <article class="card">
             <span class="card-icon">📅</span>
@@ -144,7 +94,7 @@
           </article>
           <article class="card">
             <span class="card-icon">💬</span>
-            <h3>Messagerie</h3>
+            <h3>Messagerie sécurisée</h3>
             <p>Échangez avec votre praticien directement dans l'application.</p>
           </article>
           <article class="card">
@@ -155,7 +105,7 @@
           <article class="card">
             <span class="card-icon">📄</span>
             <h3>Ordonnances numériques</h3>
-            <p>Ordonnances consultables et partagées depuis votre espace santé.</p>
+            <p>Ordonnances consultables, partageables et téléchargeables en PDF.</p>
           </article>
           <article class="card">
             <span class="card-icon">👨‍⚕️</span>
@@ -166,13 +116,67 @@
       </div>
     </section>
 
+    <!-- ============ TÉLÉCONSULTATION ============ -->
+    <section class="tele section" id="teleconsultation">
+      <div class="container tele-inner">
+        <div class="tele-text">
+          <span class="badge badge-dark">Visio sécurisée</span>
+          <h2 style="color:white;">Téléconsultation en direct</h2>
+          <p>Consultez un médecin depuis chez vous, sans vous déplacer. La téléconsultation est rapide, simple et sécurisée.</p>
+          <ul class="check-list">
+            <li>Connexion vidéo en un clic via Jitsi WebRTC</li>
+            <li>Médecins vérifiés et disponibles</li>
+            <li>Ordonnance numérique délivrée à la fin</li>
+            <li>Compatible mobile et ordinateur</li>
+          </ul>
+          <a href="app.html" class="btn btn-primary btn-lg">Essayer la démo</a>
+        </div>
+        <div class="tele-visual">
+          <img src="assets/teleconsult-banner.jpg" alt="Téléconsultation en direct" />
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ PARCOURS ============ -->
+    <section class="journey section" id="parcours">
+      <div class="container">
+        <h2 class="section-title">Comment ça marche ?</h2>
+        <p class="section-sub">En 4 étapes simples, de la découverte à la consultation.</p>
+        <div class="journey-grid">
+          <article class="jstep">
+            <span class="jstep-num">1</span>
+            <span class="jstep-ico">📲</span>
+            <h3>Téléchargez l'APK</h3>
+            <p>Installez l'application Android ou utilisez la version Web.</p>
+          </article>
+          <article class="jstep">
+            <span class="jstep-num">2</span>
+            <span class="jstep-ico">🔍</span>
+            <h3>Trouvez un médecin</h3>
+            <p>Parcourez les praticiens par spécialité, note et disponibilité.</p>
+          </article>
+          <article class="jstep">
+            <span class="jstep-num">3</span>
+            <span class="jstep-ico">📅</span>
+            <h3>Prenez rendez-vous</h3>
+            <p>En présentiel ou en téléconsultation, en quelques clics.</p>
+          </article>
+          <article class="jstep">
+            <span class="jstep-num">4</span>
+            <span class="jstep-ico">🩺</span>
+            <h3>Consultez & recevez</h3>
+            <p>Téléconsultation, ordonnance et suivi thérapeutique.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
     <!-- ============ IDENTITÉ RDC ============ -->
     <section class="rdc section" id="rdc">
       <div class="container">
         <h2 class="section-title">🇨🇩 Pensé pour la République Démocratique du Congo</h2>
         <p class="section-sub">
-          Docta na Tshombo n'est pas une application importée : elle est conçue
-          pour les réalités de la RDC.
+          Docta na Tshombo n'est pas une application importée : elle est conçue pour les réalités de la RDC.
         </p>
         <div class="rdc-grid">
           <article class="rdc-card">
@@ -188,7 +192,7 @@
           <article class="rdc-card">
             <span class="rdc-ico">💰</span>
             <h3>Tarifs en francs congolais</h3>
-            <p>Prix affichés en FC, adaptés au pouvoir d'achat local.</p>
+            <p>Prix adaptés au pouvoir d'achat local.</p>
           </article>
           <article class="rdc-card">
             <span class="rdc-ico">🗣️</span>
@@ -199,7 +203,32 @@
       </div>
     </section>
 
-    <!-- ============ CONFIANCE MÉDICALE ============ -->
+    <!-- ============ SHOWCASE APP ============ -->
+    <section class="showcase section" id="showcase">
+      <div class="container">
+        <div class="showcase-grid">
+          <div class="showcase-text">
+            <h2>L'application en action</h2>
+            <p>Docta na Tshombo offre une expérience fluide pour les patients comme pour les praticiens, avec une interface claire et intuitive.</p>
+            <ul class="showcase-steps">
+              <li>Tableau de bord praticien avec statut de présence</li>
+              <li>Agenda des rendez-vous avec gestion des créneaux</li>
+              <li>Carnet patients avec historique des consultations</li>
+              <li>Générateur d'ordonnance numérique avec signature</li>
+              <li>Messagerie sécurisée patient-praticien</li>
+              <li>Rappels de médicaments programmables</li>
+            </ul>
+            <a href="app.html" class="btn btn-primary btn-lg" style="margin-top:24px;">Voir l'application</a>
+          </div>
+          <div class="showcase-visual">
+            <div style="font-size:64px; margin-bottom:16px;">📱</div>
+            <p style="color:var(--text-muted); font-size:14.5px;">Interface moderne et intuitive</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ CONFiance ============ -->
     <section class="trust section" id="confiance">
       <div class="container">
         <h2 class="section-title">Pourquoi faire confiance à Docta na Tshombo ?</h2>
@@ -208,7 +237,7 @@
           <article class="trust-card">
             <span class="trust-ico">🛡️</span>
             <h3>Vérification des médecins</h3>
-            <p>Identité, diplômes, universités et numéro RPPS/CNOM contrôlés par notre conseil médical.</p>
+            <p>Identité, diplômes et numéro RPPS contrôlés par notre conseil médical.</p>
           </article>
           <article class="trust-card">
             <span class="trust-ico">🤝</span>
@@ -218,22 +247,22 @@
           <article class="trust-card">
             <span class="trust-ico">🔒</span>
             <h3>Confidentialité</h3>
-            <p>Accès sécurisé, documents personnels protégés et politique de confidentialité claire.</p>
+            <p>Données personnelles protégées et chiffrées.</p>
           </article>
           <article class="trust-card">
             <span class="trust-ico">⚖️</span>
             <h3>Conditions claires</h3>
-            <p>Conditions d'utilisation et mentions légales accessibles à tous.</p>
+            <p>Mentions légales et politique de confidentialité accessibles.</p>
           </article>
           <article class="trust-card">
             <span class="trust-ico">🎧</span>
             <h3>Support &amp; assistance</h3>
-            <p>Une équipe à votre écoute pour vous accompagner à chaque étape.</p>
+            <p>Une équipe à votre écoute pour vous accompagner.</p>
           </article>
           <article class="trust-card">
             <span class="trust-ico">🏢</span>
             <h3>Entreprise enregistrée</h3>
-            <p>Informations légales et identité de l'éditeur disponibles sur demande.</p>
+            <p>Informations légales et identité de l'éditeur disponibles.</p>
           </article>
         </div>
         <div class="trust-legal">
@@ -269,20 +298,14 @@
             </ol>
           </div>
 
-          <div class="dl-card" data-card="ios">
-            <span class="dl-logo">🍎</span>
-            <h3>iPhone &amp; iPad</h3>
-            <p>Installez <strong>l'application Web</strong> Docta na Tshombo sur votre écran d'accueil, comme une application.</p>
-            <button type="button" class="btn btn-primary btn-block" data-ios-modal>
-              Installer l'application Web sur iPhone
-            </button>
-            <ol class="ios-steps">
-              <li>Ouvrez ce site dans <strong>Safari</strong></li>
-              <li>Touchez <strong>Partager</strong> (carré + flèche)</li>
-              <li>Touchez <strong>« Sur l'écran d'accueil »</strong></li>
-              <li>Touchez <strong>Ajouter</strong></li>
-            </ol>
-            <small class="dl-note">Ce n'est pas une application iOS native : c'est une application Web installable (PWA).</small>
+          <div class="dl-card" data-card="web">
+            <span class="dl-logo">🌐</span>
+            <h3>Application Web</h3>
+            <p>Utilisez l'application directement dans votre navigateur, sans installation.</p>
+            <a href="app.html" class="btn btn-primary btn-block">
+              Lancer l'application Web
+            </a>
+            <small class="dl-note">PWA • Fonctionne hors ligne • S'installe sur l'écran d'accueil</small>
           </div>
         </div>
 
@@ -296,19 +319,19 @@
       <div class="container" style="text-align: center;">
         <h2 class="section-title">À propos & Contact</h2>
         <p class="section-sub">Docta na Tshombo — Développé par Henock Aduma</p>
-        <div style="display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; margin-top: 30px;">
-          <div class="card" style="padding: 24px; min-width: 280px; background: white; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+        <div class="contact-grid">
+          <div class="contact-card">
             <h3>📧 Email de Contact</h3>
             <p style="font-size: 1.1rem; font-weight: 600; color: var(--sage-deep); margin-top: 8px;">
               <a href="mailto:henockaduma2@gmail.com" style="color: var(--sage-deep); text-decoration: underline;">henockaduma2@gmail.com</a>
             </p>
           </div>
-          <div class="card" style="padding: 24px; min-width: 280px; background: white; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+          <div class="contact-card">
             <h3>🌐 Utiliser l'Application Web</h3>
             <p style="margin-top: 8px;">Accédez directement sans rien installer :</p>
             <a href="app.html" class="btn btn-primary btn-sm" style="margin-top: 10px;">Lancer la Web App</a>
           </div>
-          <div class="card" style="padding: 24px; min-width: 280px; background: white; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+          <div class="contact-card">
             <h3>📱 Application Android APK</h3>
             <p style="margin-top: 8px;">Téléchargez le fichier APK directement :</p>
             <button type="button" class="btn btn-secondary btn-sm" data-apk-download style="margin-top: 10px;">Télécharger l'APK</button>
@@ -339,23 +362,6 @@
       </div>
     </div>
   </footer>
-
-  <!-- Modale iOS -->
-  <div class="modal" id="ios-modal" aria-hidden="true">
-    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-title">
-      <button type="button" class="modal-close" id="modal-close" aria-label="Fermer">&times;</button>
-      <span class="dl-logo">🍎</span>
-      <h3 id="modal-title">Installer l'application Web sur iPhone</h3>
-      <ol class="ios-steps">
-        <li>Ouvrez ce site dans <strong>Safari</strong>.</li>
-        <li>Touchez le bouton <strong>Partager</strong> en bas de l'écran.</li>
-        <li>Sélectionnez <strong>« Sur l'écran d'accueil »</strong>.</li>
-        <li>Touchez <strong>Ajouter</strong>. L'icône apparaîtra sur votre écran d'accueil.</li>
-      </ol>
-      <p class="modal-note">L'application Web fonctionne hors ligne et s'ouvre en plein écran, comme une application native.</p>
-      <button type="button" class="btn btn-primary btn-block" id="modal-ok">J'ai compris</button>
-    </div>
-  </div>
 
   <script src="js/main.js"></script>
 </body>

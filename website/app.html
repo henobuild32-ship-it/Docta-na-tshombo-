@@ -6,17 +6,12 @@
   <title>Docta na Tshombo — Application Web & Santé</title>
   <meta name="description" content="Docta na Tshombo : Téléconsultation, prise de rendez-vous, ordonnances, messagerie et constantes vitales en ligne." />
   <link rel="manifest" href="manifest.webmanifest" />
-  <meta name="theme-color" content="#2C4531" />
+  <meta name="theme-color" content="#1B3A2B" />
   <link rel="stylesheet" href="css/style.css" />
-  <!-- Firebase Web SDK v9 Compat -->
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-functions-compat.js"></script>
   <style>
     /* Custom Web App UI Overlays & Components */
     .app-header {
-      background: #2C4531;
+      background: #1B3A2B;
       color: white;
       padding: 12px 20px;
       display: flex;
@@ -29,7 +24,6 @@
     }
     .app-brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 1.1rem; color: white; text-decoration: none; }
     .app-brand img { width: 34px; height: 34px; border-radius: 8px; }
-    .role-badge { background: #9FD3B6; color: #2C4531; font-weight: 700; padding: 4px 10px; border-radius: 20px; font-size: 0.8rem; text-transform: uppercase; }
     .app-layout { display: flex; min-height: calc(100vh - 60px); background: #F4F7F5; }
     .app-sidebar { width: 260px; background: white; border-right: 1px solid #E2E8F0; padding: 20px 10px; display: flex; flex-direction: column; gap: 6px; }
     @media (max-width: 768px) {
@@ -45,22 +39,38 @@
     .stat-card { background: white; padding: 20px; border-radius: 16px; box-shadow: 0 4px 14px rgba(0,0,0,0.03); border: 1px solid #EDF2F7; }
     .stat-val { font-size: 1.8rem; font-weight: 800; color: #2C4531; margin-top: 4px; }
     .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px; }
-    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 16px; }
-    .modal-overlay.active { display: flex; }
-    .modal-box { background: white; border-radius: 20px; width: 100%; max-width: 600px; max-height: 90vh; overflow-y: auto; padding: 28px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); }
     .presence-switch { display: inline-flex; align-items: center; gap: 8px; background: #EAF1EC; padding: 6px 14px; border-radius: 999px; cursor: pointer; font-weight: 600; }
     .pulse-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
     .pulse-dot.online { background: #38A169; box-shadow: 0 0 8px #38A169; }
     .pulse-dot.offline { background: #E53E3E; }
     .pulse-dot.busy { background: #DD6B20; }
     .ppg-canvas { width: 100%; height: 120px; background: #1A202C; border-radius: 12px; margin: 12px 0; }
-    .chat-box { background: white; border-radius: 16px; border: 1px solid #E2E8F0; display: flex; flex-direction: column; height: 500px; }
+    .chat-box { background: white; border-radius: 16px; border: 1px solid #E2E8F0; display: flex; flex-direction: column; height: 400px; }
     .chat-messages { flex: 1; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
     .chat-bubble { max-width: 75%; padding: 12px 16px; border-radius: 16px; font-size: 0.95rem; line-height: 1.4; }
     .chat-bubble.mine { align-self: flex-end; background: #2C4531; color: white; border-bottom-right-radius: 4px; }
     .chat-bubble.other { align-self: flex-start; background: #EDF2F7; color: #2D3748; border-bottom-left-radius: 4px; }
-    .auth-tab-btn { flex: 1; padding: 10px; border: none; background: #EDF2F7; font-weight: 700; cursor: pointer; border-radius: 8px; transition: all 0.2s; }
-    .auth-tab-btn.active { background: #2C4531; color: white; }
+    .app-tab { display: none; }
+    .app-tab.active { display: block; }
+    .showcase-banner {
+      background: linear-gradient(135deg, #1B3A2B, #2C4531);
+      color: white;
+      padding: 40px 32px;
+      border-radius: 20px;
+      margin-bottom: 28px;
+      text-align: center;
+    }
+    .showcase-banner h2 { font-size: 24px; margin-bottom: 10px; }
+    .showcase-banner p { opacity: 0.85; font-size: 15px; line-height: 1.7; }
+    .showcase-banner .btn { margin-top: 18px; }
+    .feature-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .feature-item { background: white; border-radius: 14px; padding: 20px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+    .feature-item .icon { font-size: 32px; margin-bottom: 8px; }
+    .feature-item h4 { font-size: 14px; color: #2C4531; margin-bottom: 4px; }
+    .feature-item p { font-size: 13px; color: #5A6B60; }
+    .download-section { background: #F4F9F5; border-radius: 20px; padding: 32px; text-align: center; margin-top: 28px; }
+    .download-section h3 { color: #2C4531; margin-bottom: 12px; }
+    .download-section .btn { margin: 6px; }
   </style>
 </head>
 <body>
@@ -69,522 +79,176 @@
   <header class="app-header">
     <a href="index.html" class="app-brand">
       <img src="assets/app-icon.jpg" alt="Logo" />
-      <span>Docta na Tshombo <small style="opacity:0.8; font-weight:400;">v1.4 Web</small></span>
+      <span>Docta na Tshombo <small style="opacity:0.8; font-weight:400;">v1.4</small></span>
     </a>
 
-    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-      <div id="user-role-display" class="role-badge">PATIENT</div>
-      <span id="header-user-name" style="font-weight:600; font-size:0.85rem; color:#EAF1EC;"></span>
-
-      <button id="auth-btn" onclick="openAuthModal()" class="btn btn-secondary btn-sm" style="padding:6px 14px; font-size:0.85rem;">
-        🔑 Connexion / Inscription
-      </button>
-
-      <button id="logout-btn" onclick="handleLogout()" class="btn btn-ghost btn-sm" style="color:white; border-color:rgba(255,255,255,0.4); display:none; padding:6px 14px; font-size:0.85rem;">
-        🚪 Déconnexion
-      </button>
-
-      <a href="index.html" class="btn btn-ghost btn-sm" style="color:white; padding:6px 12px; font-size:0.8rem; border-color:rgba(255,255,255,0.3);">
-        Site Vitrine
+    <div style="display:flex; align-items:center; gap:10px;">
+      <a href="index.html" class="btn btn-ghost btn-sm" style="color:white; padding:6px 14px; font-size:0.85rem; border-color:rgba(255,255,255,0.3);">
+        🏠 Site Vitrine
       </a>
+      <button id="apk-btn" class="btn btn-secondary btn-sm" style="color:white; padding:6px 14px; font-size:0.85rem;">
+        📲 Télécharger APK
+      </button>
     </div>
   </header>
 
   <!-- Main App Layout -->
   <div class="app-layout">
-    
+
     <!-- Sidebar Navigation -->
     <aside class="app-sidebar">
-      <!-- Patient Nav -->
-      <div id="patient-nav" style="display:flex; flex-direction:column; gap:6px; width:100%;">
-        <button class="nav-item active" onclick="switchTab('p-doctors')">👨‍⚕️ Trouver un Praticien</button>
-        <button class="nav-item" onclick="switchTab('p-appointments')">📅 Mes Rendez-vous</button>
-        <button class="nav-item" onclick="switchTab('p-vitals')">🩺 Scan Constantes Vitales</button>
-        <button class="nav-item" onclick="switchTab('p-messages')">💬 Messagerie</button>
-        <button class="nav-item" onclick="switchTab('p-prescriptions')">📄 Mes Ordonnances</button>
-        <button class="nav-item" onclick="switchTab('p-reminders')">💊 Rappels Médicaments</button>
-        <button class="nav-item" onclick="switchTab('about')">ℹ️ À propos & Contact</button>
-      </div>
-
-      <!-- Practitioner Nav -->
-      <div id="doctor-nav" style="display:none; flex-direction:column; gap:6px; width:100%;">
-        <button class="nav-item active" onclick="switchTab('d-dashboard')">📊 Tableau de Bord</button>
-        <button class="nav-item" onclick="switchTab('d-agenda')">📅 Agenda & RDV</button>
-        <button class="nav-item" onclick="switchTab('d-patients')">👥 Carnet Patients</button>
-        <button class="nav-item" onclick="switchTab('d-prescription')">📝 Rédiger / Partager Ordonnance</button>
-        <button class="nav-item" onclick="switchTab('d-messages')">💬 Messagerie Patients</button>
-        <button class="nav-item" onclick="switchTab('d-verification')">🔍 Scanner & Valider Documents</button>
-        <button class="nav-item" onclick="switchTab('d-settings')">⚙️ Paramètres & Horaires</button>
-        <button class="nav-item" onclick="switchTab('about')">ℹ️ À propos & Contact</button>
+      <div style="display:flex; flex-direction:column; gap:6px; width:100%;">
+        <button class="nav-item active" onclick="switchTab('showcase')">🏠 Accueil</button>
+        <button class="nav-item" onclick="switchTab('showcase-features')">✨ Fonctionnalités</button>
+        <button class="nav-item" onclick="switchTab('showcase-tele')">🎥 Téléconsultation</button>
+        <button class="nav-item" onclick="switchTab('showcase-download')">📥 Télécharger</button>
+        <button class="nav-item" onclick="switchTab('showcase-about')">ℹ️ À propos</button>
       </div>
     </aside>
 
     <!-- Main Content Area -->
     <main class="app-content">
 
-      <!-- ================= PATIENT TABS ================= -->
+      <!-- ============ SHOWCASE HOME ============ -->
+      <div id="tab-showcase" class="app-tab active">
+        <div class="showcase-banner">
+          <h2>🏥 Docta na Tshombo</h2>
+          <p>Consultez un médecin depuis votre téléphone ou navigateur.<br />Téléconsultation, rendez-vous, ordonnances et rappels — le tout en une seule application.</p>
+          <a href="app.html#showcase-download" class="btn btn-primary btn-lg">📲 Télécharger l'APK Android</a>
+          <a href="app.html#showcase-tele" class="btn btn-ghost btn-lg" style="color:white; border-color:rgba(255,255,255,0.4);">🌐 Essayer la Web App</a>
+        </div>
 
-      <!-- Doctor Search & Booking -->
-      <div id="tab-p-doctors" class="app-tab">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
-          <div>
-            <h2>Trouver un Médecin & Téléconsulter</h2>
-            <p style="color:#718096;">Prenez rendez-vous en présentiel ou téléconsultation directe.</p>
+        <div class="feature-row">
+          <div class="feature-item">
+            <div class="icon">🎥</div>
+            <h4>Téléconsultation</h4>
+            <p>Visio sécurisée avec Jitsi WebRTC</p>
           </div>
-          <div style="display:flex; gap:8px;">
-            <input type="text" id="doc-search-input" onkeyup="filterDoctors()" placeholder="Spécialité, nom ou ville..." style="padding:10px 16px; border-radius:10px; border:1px solid #CBD5E0; width:260px;" />
+          <div class="feature-item">
+            <div class="icon">📅</div>
+            <h4>Rendez-vous</h4>
+            <p>Prise de RDV en ligne simple</p>
+          </div>
+          <div class="feature-item">
+            <div class="icon">💬</div>
+            <h4>Messagerie</h4>
+            <p>Chat sécurisé patient-praticien</p>
+          </div>
+          <div class="feature-item">
+            <div class="icon">💊</div>
+            <h4>Rappels</h4>
+            <p>Notifications de médicaments</p>
+          </div>
+          <div class="feature-item">
+            <div class="icon">📄</div>
+            <h4>Ordonnances</h4>
+            <p>PDF signé et téléchargeable</p>
+          </div>
+          <div class="feature-item">
+            <div class="icon">👨‍⚕️</div>
+            <h4>Espace praticien</h4>
+            <p>Gestion cabinet & patients</p>
           </div>
         </div>
 
-        <div id="doctors-list-grid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(300px, 1fr)); gap:20px;">
-          <!-- Dynamically filled via JS from Firestore -->
-        </div>
-      </div>
-
-      <!-- Patient Appointments -->
-      <div id="tab-p-appointments" class="app-tab" style="display:none;">
-        <h2>Mes Rendez-vous Médicaux</h2>
-        <p style="color:#718096; margin-bottom:20px;">Historique et consultations à venir.</p>
-        
-        <div id="patient-appointments-list" style="display:flex; flex-direction:column; gap:12px;">
-          <!-- Dynamically filled via JS from Firestore -->
-        </div>
-      </div>
-
-      <!-- Vital Signs Scan (Torche / Caméra PPG) -->
-      <div id="tab-p-vitals" class="app-tab" style="display:none;">
-        <div class="stat-card" style="max-width:680px; margin:0 auto; text-align:center;">
-          <h2>🩺 Scan des Constantes Vitales par Torche</h2>
-          <p style="color:#718096; margin-top:6px;">Placez votre index sur le capteur/flash de votre téléphone ou caméra web. L'application mesure le flux sanguin en temps réel.</p>
-
-          <div style="margin:24px 0; position:relative;">
-            <div id="scan-pulse-circle" style="width:120px; height:120px; border-radius:50%; background:#E2E8F0; margin:0 auto; display:flex; align-items:center; justify-content:center; font-size:2.5rem; transition:all 0.3s ease;">
-              🩸
-            </div>
-            <p id="scan-timer-text" style="font-weight:700; color:#2C4531; margin-top:12px;">Appuyez sur "Démarrer le scan" (15 secondes)</p>
-          </div>
-
-          <canvas id="ppg-graph" class="ppg-canvas"></canvas>
-
-          <div style="display:flex; justify-content:space-around; margin:20px 0;">
-            <div>
-              <span style="color:#718096; font-size:0.9rem;">Fréquence Cardiaque</span>
-              <div id="val-bpm" style="font-size:2rem; font-weight:800; color:#2C4531;">-- BPM</div>
-            </div>
-            <div>
-              <span style="color:#718096; font-size:0.9rem;">Saturation Oxygène (SpO2)</span>
-              <div id="val-spo2" style="font-size:2rem; font-weight:800; color:#319795;">-- %</div>
-            </div>
-          </div>
-
-          <button id="start-scan-btn" onclick="startVitalSignsScan()" class="btn btn-primary btn-lg" style="width:100%;">
-            📸 Démarrer le scan de 15 secondes
-          </button>
+        <div class="download-section">
+          <h3>📲 Télécharger Docta na Tshombo</h3>
+          <p style="color:var(--text-muted); margin-bottom:16px;">Choisissez votre plateforme.</p>
+          <button type="button" class="btn btn-primary btn-lg" data-apk-download>Télécharger l'APK Android</button>
+          <a href="index.html" class="btn btn-ghost btn-lg">Retour au site vitrine</a>
+          <p style="margin-top:16px; font-size:13px; color:var(--text-muted);">APK signée • v1.4 • 24 Mo • Android 7.0+</p>
         </div>
       </div>
 
-      <!-- Patient Messages -->
-      <div id="tab-p-messages" class="app-tab" style="display:none;">
-        <h2>Messagerie Sécurisée</h2>
-        <p style="color:#718096; margin-bottom:16px;">Discutez en direct avec vos praticiens.</p>
-
-        <div class="chat-box">
-          <div style="padding:14px; border-bottom:1px solid #E2E8F0; background:#F7FAFC; border-radius:16px 16px 0 0; display:flex; justify-content:space-between; align-items:center;">
-            <strong id="p-chat-doc-name">💬 Conversation Médicale</strong>
-            <span class="pulse-dot online"></span>
+      <!-- ============ FEATURES ============ -->
+      <div id="tab-showcase-features" class="app-tab">
+        <h2 style="margin-bottom:20px; color:var(--sage-deep);">✨ Fonctionnalités</h2>
+        <div class="feature-row">
+          <div class="feature-item">
+            <div class="icon">🎥</div>
+            <h4>Téléconsultation Vidéo</h4>
+            <p>Rejoignez votre médecin en visio en un clic via Jitsi WebRTC</p>
           </div>
-          <div id="p-chat-messages" class="chat-messages">
-            <!-- Messages loaded dynamically from Firestore -->
+          <div class="feature-item">
+            <div class="icon">📅</div>
+            <h4>Prise de Rendez-vous</h4>
+            <p>Choisissez votre médecin, le motif et l'heure. Confirmation immédiate.</p>
           </div>
-          <div style="padding:12px; border-top:1px solid #E2E8F0; display:flex; gap:10px;">
-            <input type="text" id="p-chat-input" placeholder="Rédiger un message..." style="flex:1; padding:10px 16px; border-radius:999px; border:1px solid #CBD5E0;" />
-            <button onclick="sendPatientMessage()" class="btn btn-primary btn-sm">Envoyer</button>
+          <div class="feature-item">
+            <div class="icon">💬</div>
+            <h4>Messagerie Sécurisée</h4>
+            <p>Échangez avec votre praticien directement dans l'application</p>
           </div>
-        </div>
-      </div>
-
-      <!-- Patient Prescriptions -->
-      <div id="tab-p-prescriptions" class="app-tab" style="display:none;">
-        <h2>Mes Ordonnances Médicales</h2>
-        <p style="color:#718096; margin-bottom:20px;">Consultez et téléchargez vos prescriptions délivrées par vos médecins.</p>
-        <div id="patient-prescriptions-list" style="display:flex; flex-direction:column; gap:12px;"></div>
-      </div>
-
-      <!-- Patient Medication Reminders -->
-      <div id="tab-p-reminders" class="app-tab" style="display:none;">
-        <h2>💊 Rappels de Médicaments</h2>
-        <p style="color:#718096; margin-bottom:20px;">Ne manquez plus jamais la prise de vos traitements.</p>
-        <div class="stat-card" style="margin-bottom:20px;">
-          <h3>+ Ajouter un rappel</h3>
-          <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
-            <input type="text" id="rem-med-name" placeholder="Nom du médicament (ex: Amoxicilline 1g)" style="flex:2; padding:10px; border-radius:8px; border:1px solid #CBD5E0;" />
-            <input type="time" id="rem-time" value="08:00" style="flex:1; padding:10px; border-radius:8px; border:1px solid #CBD5E0;" />
-            <button onclick="addMedReminder()" class="btn btn-primary btn-sm">Ajouter le rappel</button>
+          <div class="feature-item">
+            <div class="icon">💊</div>
+            <h4>Rappels Médicaments</h4>
+            <p>Des notifications pour ne plus jamais oublier un traitement</p>
           </div>
-        </div>
-        <div id="reminders-list" style="display:flex; flex-direction:column; gap:10px;"></div>
-      </div>
-
-
-      <!-- ================= PRACTITIONER TABS ================= -->
-
-      <!-- Practitioner Dashboard -->
-      <div id="tab-d-dashboard" class="app-tab" style="display:none;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
-          <div>
-            <h2>Tableau de Bord Praticien</h2>
-            <p style="color:#718096;">Vue d'ensemble de l'activité du cabinet.</p>
+          <div class="feature-item">
+            <div class="icon">📄</div>
+            <h4>Ordonnances Numériques</h4>
+            <p>Ordonnances consultables, partageables et téléchargeables en PDF</p>
           </div>
-
-          <div class="presence-switch" onclick="toggleDoctorPresence()">
-            <span id="doc-presence-dot" class="pulse-dot online"></span>
-            <span id="doc-presence-text">Statut: Présent (En ligne)</span>
-          </div>
-        </div>
-
-        <div class="stats-grid">
-          <div class="stat-card">
-            <span style="color:#718096;">Consultations du jour</span>
-            <div id="d-stat-today" class="stat-val">0 Consultation</div>
-            <small id="d-stat-today-sub" style="color:#38A169;">Données en direct</small>
-          </div>
-          <div class="stat-card">
-            <span style="color:#718096;">Patients suivis</span>
-            <div id="d-stat-total-patients" class="stat-val">0 Patient</div>
-            <small style="color:#805AD5;">Base Patients Firestore</small>
-          </div>
-          <div class="stat-card">
-            <span style="color:#718096;">Cabinet</span>
-            <div class="stat-val" style="font-size:1.4rem;">Ouvert</div>
-            <small style="color:#3182CE;">Prise de RDV active</small>
-          </div>
-        </div>
-
-        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:20px;">
-          <div class="stat-card">
-            <h3>Prochains Rendez-vous</h3>
-            <div id="d-upcoming-rdv-list" style="margin-top:12px; display:flex; flex-direction:column; gap:10px;"></div>
-          </div>
-          <div class="stat-card">
-            <h3>Information Cabinet & Profil</h3>
-            <div style="margin-top:12px; color:#4A5568; font-size:0.95rem; line-height:1.6;">
-              <p>📍 Votre profil est visible par tous les patients.</p>
-              <p>⚡ Assurez-vous que vos horaires et spécialités sont à jour.</p>
-            </div>
+          <div class="feature-item">
+            <div class="icon">👨‍⚕️</div>
+            <h4>Espace Praticien</h4>
+            <p>Plages horaires, consultations et patients gérés depuis l'app</p>
           </div>
         </div>
       </div>
 
-      <!-- Practitioner Agenda -->
-      <div id="tab-d-agenda" class="app-tab" style="display:none;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-          <h2>Agenda & Consultations</h2>
-        </div>
-        <div id="doctor-agenda-list" style="display:flex; flex-direction:column; gap:12px;"></div>
-      </div>
-
-      <!-- Practitioner Patients Management -->
-      <div id="tab-d-patients" class="app-tab" style="display:none;">
-        <h2>👥 Carnet de Patients</h2>
-        <p style="color:#718096; margin-bottom:20px;">Recherche, dossiers médicaux et historiques.</p>
-        <div id="doctor-patients-list" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(300px, 1fr)); gap:16px;"></div>
-      </div>
-
-      <!-- Practitioner Prescriptions Generator & Share -->
-      <div id="tab-d-prescription" class="app-tab" style="display:none;">
-        <h2>📝 Rédiger & Partager une Ordonnance</h2>
-        <p style="color:#718096; margin-bottom:20px;">Générez des ordonnances numériques certifiées avec signature et cachet.</p>
-
-        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:20px;">
-          <div class="stat-card">
-            <h3>Information Prescription</h3>
-            <div style="display:flex; flex-direction:column; gap:12px; margin-top:14px;">
-              <label>Sélectionner le Patient:
-                <select id="presc-patient-select" style="width:100%; padding:10px; border-radius:8px; border:1px solid #CBD5E0; margin-top:4px;">
-                  <option value="">Sélectionnez un patient...</option>
-                </select>
-              </label>
-              <label>Diagnostic / Motif:
-                <input type="text" id="presc-diag" placeholder="ex: Consultation générale, Fièvre..." style="width:100%; padding:10px; border-radius:8px; border:1px solid #CBD5E0; margin-top:4px;" />
-              </label>
-
-              <h4>Médicaments Prescrits:</h4>
-              <div id="presc-meds-container" style="display:flex; flex-direction:column; gap:8px;">
-                <div style="display:flex; gap:8px;">
-                  <input type="text" class="p-med-name" placeholder="Médicament (ex: Paracétamol 1g)" style="flex:2; padding:8px; border-radius:6px; border:1px solid #CBD5E0;" />
-                  <input type="text" class="p-med-poso" placeholder="Posologie" style="flex:1; padding:8px; border-radius:6px; border:1px solid #CBD5E0;" />
-                  <input type="text" class="p-med-dur" placeholder="Durée" style="flex:1; padding:8px; border-radius:6px; border:1px solid #CBD5E0;" />
-                </div>
-              </div>
-              <button onclick="addPrescMedRow()" class="btn btn-ghost btn-sm" style="align-self:flex-start;">+ Ajouter un médicament</button>
-
-              <button onclick="generatePrescriptionPreview()" class="btn btn-primary btn-block" style="margin-top:14px;">📄 Générer l'Aperçu PDF & Cachet</button>
-            </div>
-          </div>
-
-          <div class="stat-card">
-            <h3>Aperçu Ordonnance & Options de Partage</h3>
-            <div id="presc-preview-box" style="border:2px dashed #CBD5E0; padding:20px; border-radius:12px; background:#FAFAFA; margin-top:14px; min-height:260px;">
-              <p style="color:#A0AEC0; text-align:center; margin-top:80px;">Remplissez le formulaire et cliquez sur "Générer l'Aperçu".</p>
-            </div>
-
-            <div id="presc-share-actions" style="display:none; flex-direction:column; gap:10px; margin-top:16px;">
-              <h4>Options de Partage Sécurisé :</h4>
-              <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-                <button onclick="sharePrescription('message')" class="btn btn-primary btn-sm">📤 Par Message (Chat)</button>
-                <button onclick="sharePrescription('email')" class="btn btn-secondary btn-sm">📧 Par Email (henockaduma2@gmail.com)</button>
-                <button onclick="sharePrescription('sms')" class="btn btn-ghost btn-sm">📱 Par SMS</button>
-                <button onclick="sharePrescription('download')" class="btn btn-ghost btn-sm">💾 Télécharger PDF</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Practitioner Document Scan Auto-Validation (15 seconds) -->
-      <div id="tab-d-verification" class="app-tab" style="display:none;">
-        <div class="stat-card" style="max-width:680px; margin:0 auto; text-align:center;">
-          <h2>🔍 Vérification Automatique des Documents (15s)</h2>
-          <p style="color:#718096; margin-top:6px;">Uploadez le diplôme ou la carte professionnelle. Le scanner automatique vérifie la conformité, la résolution et la signature en 15 secondes max.</p>
-
-          <div style="margin:24px 0; padding:20px; border:2px dashed #CBD5E0; border-radius:16px; background:#FAFAFA;">
-            <input type="file" id="doc-upload-file" accept="image/*,application/pdf" style="display:none;" onchange="handleDocFileSelected(event)" />
-            <button onclick="document.getElementById('doc-upload-file').click()" class="btn btn-ghost btn-lg">
-              📁 Sélectionner un document (PDF / JPEG / PNG, Max 5MB)
-            </button>
-            <p id="selected-doc-name" style="margin-top:8px; font-weight:600; color:#2C4531;"></p>
-          </div>
-
-          <div id="scan-progress-box" style="display:none; margin:20px 0;">
-            <div style="background:#E2E8F0; border-radius:999px; height:14px; overflow:hidden;">
-              <div id="scan-progress-bar" style="width:0%; height:100%; background:#2C4531; transition:width 0.3s linear;"></div>
-            </div>
-            <p id="scan-status-label" style="margin-top:10px; font-weight:700; color:#2C4531;">Analyse du document en cours (15s)...</p>
-          </div>
-
-          <div id="scan-result-banner" style="display:none; padding:16px; border-radius:12px; margin-top:16px; font-weight:700;"></div>
-
-          <button id="run-auto-val-btn" onclick="startDocAutoValidation()" class="btn btn-primary btn-lg" style="width:100%;" disabled>
-            ⚡ Lancer la vérification automatique en 15 secondes
-          </button>
-        </div>
-      </div>
-
-      <!-- Practitioner Settings -->
-      <div id="tab-d-settings" class="app-tab" style="display:none;">
-        <h2>⚙️ Paramètres du Compte & Horaires</h2>
-        <p style="color:#718096; margin-bottom:20px;">Gérez vos plages d'ouverture, adresse et profil.</p>
-        <div class="stat-card" style="max-width:600px;">
-          <h3>Horaires Hebdomadaires</h3>
-          <div style="display:flex; flex-direction:column; gap:10px; margin-top:14px;">
-            <label style="display:flex; justify-content:space-between; align-items:center;">
-              <span>Lundi - Vendredi :</span>
-              <input type="text" value="08:00 - 17:00" style="padding:8px; border-radius:6px; border:1px solid #CBD5E0;" />
-            </label>
-            <label style="display:flex; justify-content:space-between; align-items:center;">
-              <span>Samedi :</span>
-              <input type="text" value="09:00 - 13:00" style="padding:8px; border-radius:6px; border:1px solid #CBD5E0;" />
-            </label>
-            <label style="display:flex; justify-content:space-between; align-items:center;">
-              <span>Dimanche & Congés :</span>
-              <input type="text" value="Fermé" style="padding:8px; border-radius:6px; border:1px solid #CBD5E0;" />
-            </label>
-            <button onclick="savePractitionerSchedule()" class="btn btn-primary btn-sm" style="margin-top:10px; align-self:flex-start;">Enregistrer les horaires</button>
-          </div>
-        </div>
-      </div>
-
-
-      <!-- ================= ABOUT & LEGAL TAB ================= -->
-      <div id="tab-about" class="app-tab" style="display:none;">
-        <div class="stat-card" style="max-width:700px; margin:0 auto;">
-          <div style="text-align:center; border-bottom:1px solid #E2E8F0; padding-bottom:20px; margin-bottom:20px;">
-            <img src="assets/app-icon.jpg" alt="Logo" style="width:70px; height:70px; border-radius:16px; margin:0 auto 12px;" />
-            <h2>Docta na Tshombo — Version 1.4 Web</h2>
-            <p style="color:#718096;">Conçue et développée par <strong>Henock Aduma</strong></p>
-          </div>
-
-          <h3>📧 Contact & Support</h3>
-          <p style="font-size:1.1rem; font-weight:700; color:#2C4531; margin:10px 0 20px;">
-            Email : <a href="mailto:henockaduma2@gmail.com" style="color:#2C4531; text-decoration:underline;">henockaduma2@gmail.com</a>
-          </p>
-
-          <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:24px;">
-            <button onclick="openLegalModal('privacy')" class="btn btn-ghost btn-sm">📜 Politique de Confidentialité</button>
-            <button onclick="openLegalModal('terms')" class="btn btn-ghost btn-sm">⚖️ Conditions d'Utilisation</button>
-            <a href="index.html" class="btn btn-secondary btn-sm">📱 Site Vitrine / Télécharger APK</a>
-          </div>
-
-          <h3>Features Clés de l'Application :</h3>
-          <ul style="margin-left:20px; line-height:1.8; color:#4A5568;">
-            <li>✅ Téléconsultation vidéo interactive Jitsi/WebRTC.</li>
-            <li>✅ Scan des constantes vitales (BPM, SpO2) par caméra/torche.</li>
-            <li>✅ Générateur et partage d'ordonnance sécurisé (Chat, Email, PDF).</li>
-            <li>✅ Validation automatique des praticiens en 15 secondes.</li>
-            <li>✅ Messagerie en temps réel et rappels de traitements.</li>
+      <!-- ============ TELECONSULTATION ============ -->
+      <div id="tab-showcase-tele" class="app-tab">
+        <h2 style="margin-bottom:20px; color:var(--sage-deep);">🎥 Téléconsultation en Direct</h2>
+        <div class="stat-card" style="max-width:700px; margin:0 auto; text-align:center;">
+          <p style="color:var(--text-muted); margin-bottom:20px;">La téléconsultation est rapide, simple et sécurisée. Rejoignez votre médecin en visio depuis chez vous.</p>
+          <ul style="text-align:left; max-width:400px; margin:0 auto 20px; line-height:2; color:var(--text-dark);">
+            <li>✅ Connexion vidéo en un clic via Jitsi WebRTC</li>
+            <li>✅ Médecins vérifiés et disponibles</li>
+            <li>✅ Ordonnance numérique délivrée à la fin</li>
+            <li>✅ Compatible mobile et ordinateur</li>
+            <li>✅ Aucune installation requise (Web)</li>
           </ul>
+          <a href="app.html" class="btn btn-primary btn-lg">Lancer la Web App</a>
+        </div>
+      </div>
+
+      <!-- ============ DOWNLOAD ============ -->
+      <div id="tab-showcase-download" class="app-tab">
+        <h2 style="margin-bottom:20px; color:var(--sage-deep);">📥 Télécharger Docta na Tshombo</h2>
+        <div class="download-section">
+          <h3>Application Android APK</h3>
+          <p style="color:var(--text-muted); margin-bottom:16px;">Version officielle signée, compatible Android 7.0 et plus.</p>
+          <button type="button" class="btn btn-primary btn-lg" data-apk-download>Télécharger l'APK Android</button>
+          <p style="margin-top:12px; font-size:13px; color:var(--text-muted);">APK signée • v1.4 • 24 Mo</p>
+        </div>
+        <div class="download-section" style="background:var(--sage-light);">
+          <h3>🌐 Application Web (PWA)</h3>
+          <p style="color:var(--text-muted); margin-bottom:16px;">Utilisez l'application directement dans votre navigateur, sans installation.</p>
+          <a href="app.html" class="btn btn-primary btn-lg">Lancer l'application Web</a>
+          <p style="margin-top:12px; font-size:13px; color:var(--text-muted);">PWA • Fonctionne hors ligne • S'installe sur l'écran d'accueil</p>
+        </div>
+      </div>
+
+      <!-- ============ ABOUT ============ -->
+      <div id="tab-showcase-about" class="app-tab">
+        <h2 style="margin-bottom:20px; color:var(--sage-deep);">ℹ️ À propos de Docta na Tshombo</h2>
+        <div class="stat-card" style="max-width:700px; margin:0 auto;">
+          <h3>Notre mission</h3>
+          <p style="color:var(--text-muted); line-height:1.8;">Docta na Tshombo est une application de santé conçue et développée pour la République Démocratique du Congo. Elle permet aux patients de consulter des médecins vérifiés en téléconsultation ou en présentiel, de prendre des rendez-vous, de recevoir des ordonnances numériques et de gérer leurs rappels de médicaments.</p>
+
+          <h3 style="margin-top:20px;">Contact</h3>
+          <p style="font-size:1.1rem; font-weight:600; color:var(--sage-deep);">📧 <a href="mailto:henockaduma2@gmail.com" style="color:var(--sage-deep); text-decoration:underline;">henockaduma2@gmail.com</a></p>
+
+          <h3 style="margin-top:20px;">Version</h3>
+          <p style="color:var(--text-muted);">v1.4 — Web App & Android APK</p>
+
+          <h3 style="margin-top:20px;">Lien du site vitrine</h3>
+          <p><a href="index.html" class="btn btn-primary btn-sm">Retour au site vitrine</a></p>
         </div>
       </div>
 
     </main>
-  </div>
-
-  <!-- Teleconsultation Video Modal -->
-  <div id="teleconsult-modal" class="modal-overlay">
-    <div class="modal-box" style="max-width:800px; padding:0; overflow:hidden;">
-      <div style="background:#2C4531; color:white; padding:16px 20px; display:flex; justify-content:space-between; align-items:center;">
-        <h3 id="teleconsult-modal-title">📹 Téléconsultation en Direct</h3>
-        <button onclick="closeTeleconsultModal()" style="background:none; border:none; color:white; font-size:1.5rem; cursor:pointer;">&times;</button>
-      </div>
-
-      <div style="position:relative; width:100%; height:450px; background:#000;">
-        <iframe id="jitsi-iframe" src="" style="width:100%; height:100%; border:none;" allow="camera; microphone; fullscreen; display-capture"></iframe>
-      </div>
-
-      <div style="padding:14px 20px; background:#F7FAFC; display:flex; justify-content:space-between; align-items:center;">
-        <span style="font-size:0.9rem; color:#718096;">Téléconsultation sécurisée WebRTC</span>
-        <button onclick="closeTeleconsultModal()" class="btn btn-secondary btn-sm">Raccrocher & Quitter</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Add Consultation Modal -->
-  <div id="add-consult-modal" class="modal-overlay">
-    <div class="modal-box">
-      <h3>+ Ajouter manuellement une consultation</h3>
-      <div style="display:flex; flex-direction:column; gap:12px; margin-top:16px;">
-        <label>Nom du Patient:
-          <input type="text" id="add-c-patient" placeholder="Ex: Jean Mukendi" style="width:100%; padding:10px; border-radius:8px; border:1px solid #CBD5E0;" />
-        </label>
-        <label>Date & Heure:
-          <input type="datetime-local" id="add-c-date" style="width:100%; padding:10px; border-radius:8px; border:1px solid #CBD5E0;" />
-        </label>
-        <label>Motif de Consultation:
-          <input type="text" id="add-c-reason" placeholder="Ex: Contrôle tension" style="width:100%; padding:10px; border-radius:8px; border:1px solid #CBD5E0;" />
-        </label>
-        <label>Type:
-          <select id="add-c-type" style="width:100%; padding:10px; border-radius:8px; border:1px solid #CBD5E0;">
-            <option value="présentiel">Présentiel au cabinet</option>
-            <option value="téléconsultation">Téléconsultation Vidéo</option>
-          </select>
-        </label>
-        <div style="display:flex; gap:10px; margin-top:12px;">
-          <button onclick="saveManualConsultation()" class="btn btn-primary btn-block">Enregistrer</button>
-          <button onclick="closeAddConsultationModal()" class="btn btn-ghost btn-block">Annuler</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Legal Info Modal -->
-  <div id="legal-modal" class="modal-overlay">
-    <div class="modal-box">
-      <h3 id="legal-title">Information Légale</h3>
-      <div id="legal-body" style="margin:16px 0; line-height:1.6; max-height:60vh; overflow-y:auto;"></div>
-      <button onclick="closeLegalModal()" class="btn btn-primary btn-block">Fermer</button>
-    </div>
-  </div>
-
-  <!-- Booking RDV Modal -->
-  <div id="book-rdv-modal" class="modal-overlay">
-    <div class="modal-box">
-      <h3 id="book-modal-title">📅 Prise de Rendez-vous Médical</h3>
-      <input type="hidden" id="book-doc-id" />
-      <input type="hidden" id="book-doc-name" />
-      <div style="display:flex; flex-direction:column; gap:12px; margin-top:16px;">
-        <label>Médecin sélectionné :
-          <input type="text" id="book-doc-display" disabled style="width:100%; padding:10px; border-radius:8px; border:1px solid #CBD5E0; background:#EDF2F7; font-weight:700;" />
-        </label>
-        <label>Date & Heure souhaitées :
-          <input type="datetime-local" id="book-datetime" style="width:100%; padding:10px; border-radius:8px; border:1px solid #CBD5E0;" />
-        </label>
-        <label>Motif de la consultation :
-          <input type="text" id="book-reason" placeholder="Ex: Consultation générale, Suivi tension, Fièvre..." style="width:100%; padding:10px; border-radius:8px; border:1px solid #CBD5E0;" />
-        </label>
-        <label>Type de rendez-vous :
-          <select id="book-type" style="width:100%; padding:10px; border-radius:8px; border:1px solid #CBD5E0;">
-            <option value="TELECONSULTATION">📹 Téléconsultation Vidéo</option>
-            <option value="PRESENTIEL">🏥 Présentiel au cabinet</option>
-          </select>
-        </label>
-        <div style="display:flex; gap:10px; margin-top:12px;">
-          <button onclick="confirmBooking()" class="btn btn-primary btn-block">Confirmer le Rendez-vous</button>
-          <button onclick="closeBookModal()" class="btn btn-ghost btn-block">Annuler</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Auth Modal (Login / Register) -->
-  <div id="auth-modal" class="modal-overlay">
-    <div class="modal-box" style="max-width:500px;">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-        <h3 id="auth-modal-title">🔐 Espace Authentification</h3>
-        <button onclick="closeAuthModal()" style="background:none; border:none; font-size:1.5rem; cursor:pointer;">&times;</button>
-      </div>
-
-      <div style="display:flex; gap:8px; margin-bottom:20px;">
-        <button id="auth-tab-login" class="auth-tab-btn active" onclick="switchAuthTab('login')">Se Connecter</button>
-        <button id="auth-tab-signup" class="auth-tab-btn" onclick="switchAuthTab('signup')">Créer un Compte</button>
-      </div>
-
-      <!-- Login Form -->
-      <form id="login-form" onsubmit="handleLoginSubmit(event)" style="display:flex; flex-direction:column; gap:12px;">
-        <label>Adresse Email :
-          <input type="email" id="login-email" required placeholder="ex: patient@docta.cd" style="width:100%; padding:10px; border-radius:8px; border:1px solid #CBD5E0;" />
-        </label>
-        <label>Mot de passe :
-          <input type="password" id="login-password" required placeholder="••••••••" style="width:100%; padding:10px; border-radius:8px; border:1px solid #CBD5E0;" />
-        </label>
-        <div id="login-error" style="color:#E53E3E; font-size:0.85rem; font-weight:600; display:none;"></div>
-        <button type="submit" class="btn btn-primary btn-block" style="margin-top:8px;">Se Connecter</button>
-      </form>
-
-      <!-- Signup Form -->
-      <form id="signup-form" onsubmit="handleSignupSubmit(event)" style="display:none; flex-direction:column; gap:12px;">
-        <label style="font-weight:700;">Je m'inscris en tant que :
-          <select id="signup-role" onchange="toggleSignupRoleFields()" style="width:100%; padding:10px; border-radius:8px; border:2px solid #2C4531; margin-top:4px; font-weight:700;">
-            <option value="patient">👤 Patient</option>
-            <option value="doctor">👨‍⚕️ Praticien / Médecin</option>
-          </select>
-        </label>
-
-        <div style="display:flex; gap:10px;">
-          <label style="flex:1;">Prénom :
-            <input type="text" id="signup-firstname" required placeholder="Jean" style="width:100%; padding:10px; border-radius:8px; border:1px solid #CBD5E0;" />
-          </label>
-          <label style="flex:1;">Nom :
-            <input type="text" id="signup-lastname" required placeholder="Mukendi" style="width:100%; padding:10px; border-radius:8px; border:1px solid #CBD5E0;" />
-          </label>
-        </div>
-
-        <label>Adresse Email :
-          <input type="email" id="signup-email" required placeholder="ex: medecin@docta.cd" style="width:100%; padding:10px; border-radius:8px; border:1px solid #CBD5E0;" />
-        </label>
-        <label>Mot de passe (6 caractères min) :
-          <input type="password" id="signup-password" required minlength="6" placeholder="••••••••" style="width:100%; padding:10px; border-radius:8px; border:1px solid #CBD5E0;" />
-        </label>
-        <label>Téléphone :
-          <input type="tel" id="signup-phone" placeholder="+243 810 000 000" style="width:100%; padding:10px; border-radius:8px; border:1px solid #CBD5E0;" />
-        </label>
-
-        <!-- Doctor Specific Extra Fields -->
-        <div id="doctor-signup-fields" style="display:none; flex-direction:column; gap:12px; background:#EAF1EC; padding:12px; border-radius:10px; border:1px solid #9FD3B6;">
-          <label>Spécialité Médicale :
-            <input type="text" id="signup-doc-specialty" placeholder="ex: Cardiologue, Pédiatre..." style="width:100%; padding:10px; border-radius:8px; border:1px solid #CBD5E0;" />
-          </label>
-          <label>Hôpital ou Cabinet médical :
-            <input type="text" id="signup-doc-hospital" placeholder="ex: Hôpital du Cinquantenaire, Kinshasa" style="width:100%; padding:10px; border-radius:8px; border:1px solid #CBD5E0;" />
-          </label>
-          <label>Numéro Ordre / RPPS :
-            <input type="text" id="signup-doc-rpps" placeholder="ex: CNOM-2026-9812" style="width:100%; padding:10px; border-radius:8px; border:1px solid #CBD5E0;" />
-          </label>
-        </div>
-
-        <div id="signup-error" style="color:#E53E3E; font-size:0.85rem; font-weight:600; display:none;"></div>
-        <button type="submit" class="btn btn-primary btn-block" style="margin-top:8px;">Créer mon Compte</button>
-      </form>
-    </div>
   </div>
 
   <script src="js/app.js"></script>

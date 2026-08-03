@@ -5,15 +5,14 @@
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () {
       navigator.serviceWorker.register("sw.js").then(function (reg) {
-        
-        // Listen for new version installed / waiting
+
         function showUpdateBanner(worker) {
           var toast = document.createElement("div");
           toast.id = "pwa-update-toast";
-          toast.style.cssText = "position:fixed; bottom:20px; right:20px; background:#2C4531; color:white; padding:16px 20px; border-radius:16px; box-shadow:0 10px 30px rgba(0,0,0,0.3); z-index:9999; display:flex; align-items:center; gap:14px; font-family:sans-serif; max-width:90%;";
+          toast.style.cssText = "position:fixed; bottom:20px; right:20px; background:#1B3A2B; color:white; padding:16px 20px; border-radius:16px; box-shadow:0 10px 30px rgba(0,0,0,0.3); z-index:9999; display:flex; align-items:center; gap:14px; font-family:sans-serif; max-width:90%;";
           toast.innerHTML = `
             <span>🔄 <strong>Nouvelle version disponible !</strong> Des améliorations sont prêtes.</span>
-            <button id="pwa-update-btn" style="background:#C96F4A; color:white; border:none; padding:8px 14px; border-radius:20px; font-weight:bold; cursor:pointer;">Mettre à jour</button>
+            <button id="pwa-update-btn" style="background:#D4734E; color:white; border:none; padding:8px 14px; border-radius:20px; font-weight:bold; cursor:pointer;">Mettre à jour</button>
           `;
           document.body.appendChild(toast);
 
@@ -51,11 +50,9 @@
 
   /* ---------- Push Notification Sound Permission Request ---------- */
   function playNotificationSound() {
-    // Try real audio file first, fallback to Web Audio API beep
     var audio = new Audio("assets/notification.mp3");
     audio.volume = 0.6;
     audio.play().catch(function() {
-      // Fallback: generate beep with Web Audio API
       try {
         var ctx = new (window.AudioContext || window.webkitAudioContext)();
         var osc = ctx.createOscillator();
@@ -80,7 +77,6 @@
       Notification.requestPermission().then(function(permission) {
         if (permission === "granted") {
           console.log("Notifications activées avec son & vibration !");
-          // Show a test notification
           new Notification("Docta na Tshombo 🩺", {
             body: "Les notifications sont activées ! Vous recevrez vos rappels de médicaments.",
             icon: "assets/app-icon.jpg"
@@ -123,7 +119,6 @@
   var iosButtons = document.querySelectorAll("[data-ios-modal]");
 
   if (isIOS) {
-    // Sur iPhone : seul l'ajout à l'écran d'accueil est utile, on masque l'APK
     apkButtons.forEach(function (b) {
       var card = b.closest("[data-card]");
       if (card) card.classList.add("dl-hidden");
@@ -133,7 +128,6 @@
     });
     iosButtons.forEach(function (b) { b.classList.add("btn-highlight"); });
   } else if (isAndroid) {
-    // Sur Android : l'APK est la cible prioritaire, le guide iOS est masqué
     iosButtons.forEach(function (b) {
       var card = b.closest("[data-card]");
       if (card) card.classList.add("dl-hidden");
@@ -145,7 +139,6 @@
   }
 
   /* ---------- Téléchargement APK ---------- */
-  // Primary: GitHub Releases
   var APK_GITHUB_URL = "https://github.com/henobuild32-ship-it/Docta-na-tshombo-/releases/latest/download/docta-na-tshombo.apk";
   var APK_LOCAL_URL = "apk/docta-na-tshombo.apk";
   var APK_URL = APK_GITHUB_URL;
