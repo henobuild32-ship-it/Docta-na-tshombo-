@@ -33,6 +33,7 @@ class MainActivity : ComponentActivity() {
             val userProfile by viewModel.userProfile.collectAsStateWithLifecycle()
             val currentScreen by viewModel.currentScreen.collectAsStateWithLifecycle()
             val selectedDoctor by viewModel.selectedPractitioner.collectAsStateWithLifecycle()
+            val selectedAppointment by viewModel.selectedAppointment.collectAsStateWithLifecycle()
             val notificationMsg by viewModel.notificationMessage.collectAsStateWithLifecycle()
             val isPractitionerPresent by viewModel.isPractitionerPresent.collectAsStateWithLifecycle()
             val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
@@ -41,9 +42,11 @@ class MainActivity : ComponentActivity() {
             val allPractitioners by viewModel.allPractitioners.collectAsStateWithLifecycle()
             val upcomingAppointments by viewModel.upcomingAppointments.collectAsStateWithLifecycle()
             val allAppointments by viewModel.allAppointments.collectAsStateWithLifecycle()
+            val patientAppointments by viewModel.patientAppointments.collectAsStateWithLifecycle()
             val medicationReminders by viewModel.medicationReminders.collectAsStateWithLifecycle()
             val prescriptions by viewModel.prescriptions.collectAsStateWithLifecycle()
             val chatMessages by viewModel.chatMessages.collectAsStateWithLifecycle()
+            val conversations by viewModel.conversations.collectAsStateWithLifecycle()
 
             val isSeniorMode = userProfile?.isSeniorMode ?: false
             val userName = userProfile?.firstName ?: ""
@@ -94,6 +97,7 @@ class MainActivity : ComponentActivity() {
                                     onLoginWithEmail = { email, password ->
                                         viewModel.loginWithEmail(email, password)
                                     },
+                                    onResetPassword = { email -> viewModel.resetPassword(email) },
                                     isLoading = isLoading,
                                     errorMessage = errorMessage
                                 )
@@ -112,8 +116,8 @@ class MainActivity : ComponentActivity() {
                                     onStartTeleconsult = { doc -> viewModel.startTeleconsultationFor(doc) },
                                     onCancelAppointment = { id -> viewModel.cancelAppointment(id) },
                                     onNavigateToReminders = { viewModel.navigateTo(AppScreen.REMINDERS_THERAPEUTIC) },
-                                    onNavigateToMessaging = { viewModel.navigateTo(AppScreen.MESSAGING) },
-                                    onNavigateToAppointmentsList = { viewModel.navigateTo(AppScreen.REMINDERS_THERAPEUTIC) }
+                                    onNavigateToMessaging = { viewModel.openMessaging() },
+                                    onNavigateToAppointmentsList = { viewModel.navigateTo(AppScreen.PATIENT_APPOINTMENTS) }
                                 )
                             }
 
@@ -132,10 +136,11 @@ class MainActivity : ComponentActivity() {
                             }
 
                             AppScreen.TELECONSULTATION -> {
-                                val doctor = selectedDoctor ?: allPractitioners.firstOrNull()
-                                if (doctor != null) {
+                                val appointment = selectedAppointment ?: upcomingAppointments.firstOrNull()
+                                if (appointment != null) {
                                     TeleconsultationScreen(
-                                        practitioner = doctor,
+                                        appointment = appointment,
+                                        displayName = userProfile?.displayName.orEmpty(),
                                         onEndCall = { viewModel.navigateTo(AppScreen.PATIENT_MAIN) },
                                         isSeniorMode = isSeniorMode
                                     )
@@ -151,18 +156,26 @@ class MainActivity : ComponentActivity() {
                                     onTogglePresence = { viewModel.togglePractitionerPresence() },
                                     appointments = allAppointments,
                                     onStartConsultationForPatient = { appt ->
-                                        viewModel.navigateTo(AppScreen.PRO_CONSULTATION)
+                                        viewModel.selectAppointment(appt)
                                     },
-                                    onNavigateToMessaging = { viewModel.navigateTo(AppScreen.MESSAGING) },
+                                    onNavigateToMessaging = { viewModel.openMessaging() },
+                                    onUpdateAppointment = { id, time, motif -> viewModel.updateAppointment(id, time, motif) },
+                                    onUpdateAppointmentStatus = { id, status -> viewModel.updateAppointmentStatus(id, status) },
+                                    onSetPresence = { present -> viewModel.setPractitionerPresence(present) },
+                                    onCreateAppointment = { patientId, patientName, date, time, type, motif ->
+                                        viewModel.createDoctorAppointment(patientId, patientName, date, time, type, motif)
+                                    },
+                                    onIssuePrescription = { patientId, patientName, med, dosage, duration, notes ->
+                                        viewModel.issuePrescriptionForPatient(patientId, patientName, med, dosage, duration, notes)
+                                    },
                                     isSeniorMode = isSeniorMode,
                                     onLogout = { viewModel.logout() }
                                 )
                             }
 
                             AppScreen.PRO_CONSULTATION -> {
-                                val currentAppt = upcomingAppointments.firstOrNull()
                                 PractitionerConsultationScreen(
-                                    appointment = currentAppt,
+                                    appointment = selectedAppointment,
                                     onIssuePrescription = { text, docName ->
                                         viewModel.issueDigitalPrescription(text, docName)
                                     },
@@ -174,9 +187,24 @@ class MainActivity : ComponentActivity() {
                             AppScreen.MESSAGING -> {
                                 MessagingScreen(
                                     messages = chatMessages,
+                                    currentUserId = userProfile?.uid.orEmpty(),
+                                    conversationTitle = if (viewModel.activeUserRole.value == com.example.data.models.UserRole.PRATICIEN) selectedAppointment?.patientName.orEmpty() else selectedAppointment?.doctorName.orEmpty(),
                                     onSendMessage = { text -> viewModel.sendChatMessage(text) },
-                                    onBack = { viewModel.navigateTo(AppScreen.PATIENT_MAIN) },
+                                    onBack = {
+                                        viewModel.navigateTo(if (viewModel.activeUserRole.value == com.example.data.models.UserRole.PRATICIEN) AppScreen.PRO_MAIN else AppScreen.PATIENT_MAIN)
+                                    },
                                     isSeniorMode = isSeniorMode
+                                )
+                            }
+
+                            AppScreen.CONVERSATIONS -> {
+                                ConversationListScreen(
+                                    conversations = conversations,
+                                    appointments = if (viewModel.activeUserRole.value == com.example.data.models.UserRole.PRATICIEN) allAppointments else patientAppointments,
+                                    currentUserId = userProfile?.uid.orEmpty(),
+                                    onSelect = { viewModel.selectConversation(it) },
+                                    onStart = { viewModel.startConversationForAppointment(it) },
+                                    onBack = { viewModel.navigateTo(if (viewModel.activeUserRole.value == com.example.data.models.UserRole.PRATICIEN) AppScreen.PRO_MAIN else AppScreen.PATIENT_MAIN) }
                                 )
                             }
 
@@ -184,12 +212,21 @@ class MainActivity : ComponentActivity() {
                                 MedicationReminderScreen(
                                     reminders = medicationReminders,
                                     prescriptions = prescriptions,
+                                    onDownloadPrescription = { viewModel.downloadPrescriptionPdf(it) },
                                     onToggleTaken = { id, currentTaken -> viewModel.toggleMedicationTaken(id, currentTaken) },
                                     onAddReminder = { name, dos, freq, time ->
                                         viewModel.addMedicationReminder(name, dos, freq, time)
                                     },
                                     onBack = { viewModel.navigateTo(AppScreen.PATIENT_MAIN) },
                                     isSeniorMode = isSeniorMode
+                                )
+                            }
+
+                            AppScreen.PATIENT_APPOINTMENTS -> {
+                                PatientAppointmentsScreen(
+                                    appointments = patientAppointments,
+                                    onCancel = { viewModel.cancelAppointment(it) },
+                                    onBack = { viewModel.navigateTo(AppScreen.PATIENT_MAIN) }
                                 )
                             }
 

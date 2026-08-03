@@ -30,10 +30,10 @@ fun PractitionerConsultationScreen(
     onBack: () -> Unit,
     isSeniorMode: Boolean
 ) {
-    var medicineName by remember { mutableStateOf("Amoxicilline 500mg") }
-    var dosage by remember { mutableStateOf("1 gélule matin et soir") }
-    var duration by remember { mutableStateOf("7 jours") }
-    var prescriptionNote by remember { mutableStateOf("À prendre à la fin du repas.") }
+    var medicineName by remember { mutableStateOf("") }
+    var dosage by remember { mutableStateOf("") }
+    var duration by remember { mutableStateOf("") }
+    var prescriptionNote by remember { mutableStateOf("") }
 
     var isPrescriptionSigned by remember { mutableStateOf(false) }
 
@@ -71,33 +71,19 @@ fun PractitionerConsultationScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column {
-                        Text("Joseph Makula", fontWeight = FontWeight.Bold, fontSize = 20.sp, color = TextDark)
-                        Text("43 ans • Homme • Groupe O+", fontSize = 13.sp, color = TextMuted)
+                        Text(appointment?.patientName ?: "Patient non sélectionné", fontWeight = FontWeight.Bold, fontSize = 20.sp, color = TextDark)
+                        Text("Identité issue du rendez-vous sécurisé", fontSize = 13.sp, color = TextMuted)
                     }
 
-                    // Allergies Alert Badge (Red)
-                    Surface(
-                        shape = RoundedCornerShape(14.dp),
-                        color = TerracottaLight,
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Terracotta)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(Icons.Outlined.Warning, contentDescription = null, tint = Terracotta, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Allergie : Pénicilline forte", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = TerracottaDark)
-                        }
-                    }
+                    Text("Allergies : non renseignées", fontSize = 12.sp, color = TextMuted)
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
                 Divider(color = SurfaceCardBorder)
                 Spacer(modifier = Modifier.height(12.dp))
 
-                Text("Antécédents médicaux :", fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                Text("• Hypertension artérielle modérée (Suivi sous Amlodipine)", fontSize = 12.sp, color = TextDark)
+                Text("Données médicales déclarées :", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                Text("Aucune donnée clinique vérifiée disponible dans ce dossier.", fontSize = 12.sp, color = TextMuted)
                 Text("• Motif RDV du jour : ${appointment?.motif ?: "Consultation de suivi"}", fontSize = 12.sp, color = SageDeep, fontWeight = FontWeight.Bold)
             }
         }

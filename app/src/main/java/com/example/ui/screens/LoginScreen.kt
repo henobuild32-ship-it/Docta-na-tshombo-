@@ -34,6 +34,7 @@ fun LoginScreen(
     onBackToOnboarding: () -> Unit,
     isSeniorMode: Boolean,
     onLoginWithEmail: ((String, String) -> Unit)? = null,
+    onResetPassword: ((String) -> Unit)? = null,
     isLoading: Boolean = false,
     errorMessage: String? = null
 ) {
@@ -186,7 +187,10 @@ fun LoginScreen(
 
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    TextButton(onClick = { onLoginWithEmail?.invoke(identifier, "") }) {
+                    TextButton(onClick = {
+                        if (identifier.isBlank()) localError = "Saisissez votre adresse email."
+                        else onResetPassword?.invoke(identifier.trim())
+                    }) {
                         Text("Mot de passe oublié ?", color = SageDeep, fontSize = 13.sp)
                     }
                 }
@@ -199,7 +203,6 @@ fun LoginScreen(
                             localError = "Veuillez remplir votre email et mot de passe."
                         } else {
                             onLoginWithEmail?.invoke(identifier, password)
-                            onLoginSuccess(selectedRole)
                         }
                     },
                     enabled = !isLoading,

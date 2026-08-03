@@ -116,7 +116,7 @@ fun PatientHomeScreen(
                         // Item 1: Home
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.clickable { }
+                            modifier = Modifier.clickable { /* Déjà sur l'accueil */ }
                         ) {
                             Box(
                                 modifier = Modifier
@@ -296,7 +296,7 @@ fun PatientHomeScreen(
                             modifier = Modifier
                                 .width(280.dp)
                                 .combinedClickable(
-                                    onClick = { },
+                                    onClick = { onNavigateToAppointmentsList() },
                                     onLongClick = { showCancelDialogForId = appt.id }
                                 ),
                             shape = RoundedCornerShape(24.dp),

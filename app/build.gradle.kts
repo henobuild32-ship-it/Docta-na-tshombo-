@@ -1,13 +1,39 @@
-import com.google.gms.googleservices.GoogleServicesPlugin.MissingGoogleServicesStrategy
-
 plugins {
   alias(libs.plugins.android.application)
   alias(libs.plugins.kotlin.compose)
+  alias(libs.plugins.kotlin.serialization)
   alias(libs.plugins.google.devtools.ksp)
   alias(libs.plugins.roborazzi)
   alias(libs.plugins.secrets)
-  alias(libs.plugins.google.services)
 }
+
+import java.util.Properties
+
+fun loadEnvProps(path: String): Properties {
+  val props = Properties()
+  val file = file(path)
+  if (file.exists()) {
+    file.forEachLine { raw ->
+      val line = raw.trim()
+      if (line.isNotEmpty() && !line.startsWith("#") && line.contains("=")) {
+        val idx = line.indexOf('=')
+        val key = line.substring(0, idx).trim()
+        val value = line.substring(idx + 1).trim().trim('"', '\'')
+        if (key.isNotEmpty()) props.setProperty(key, value)
+      }
+    }
+  }
+  return props
+}
+
+val envProps = loadEnvProps("$rootDir/.env")
+val envDefaultProps = loadEnvProps("$rootDir/.env.example")
+
+fun envOr(key: String, fallback: String): String {
+  return envProps.getProperty(key) ?: envDefaultProps.getProperty(key) ?: fallback
+}
+
+fun esc(s: String): String = s.replace("\\", "\\\\").replace("\"", "\\\"")
 
 android {
   namespace = "com.example"
@@ -19,6 +45,10 @@ android {
     targetSdk = 36
     versionCode = 2
     versionName = "1.1"
+    buildConfigField("String", "ONESIGNAL_APP_ID", "\"${esc(envOr("ONESIGNAL_APP_ID", ""))}\"")
+    buildConfigField("String", "SUPABASE_URL", "\"${esc(envOr("SUPABASE_URL", ""))}\"")
+    buildConfigField("String", "SUPABASE_ANON_KEY", "\"${esc(envOr("SUPABASE_ANON_KEY", ""))}\"")
+    buildConfigField("String", "SUPABASE_BUCKET_NAME", "\"${esc(envOr("SUPABASE_BUCKET_NAME", "docta-na-tshombo"))}\"")
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
@@ -61,38 +91,19 @@ secrets {
   defaultPropertiesFileName = ".env.example"
 }
 
-googleServices { missingGoogleServicesStrategy = MissingGoogleServicesStrategy.WARN }
-
 dependencies {
   // Compose BOM
   implementation(platform(libs.androidx.compose.bom))
-
-  // Firebase BoM
-  implementation(platform("com.google.firebase:firebase-bom:34.17.0"))
-
-  // Firebase Core & Analytics
-  implementation("com.google.firebase:firebase-analytics")
-
-  // Firebase Authentication
-  implementation("com.google.firebase:firebase-auth")
-
-  // Firebase Cloud Firestore
-  implementation("com.google.firebase:firebase-firestore")
-
-  // Firebase Cloud Messaging
-  implementation("com.google.firebase:firebase-messaging")
-
-  // Firebase App Check
-  implementation("com.google.firebase:firebase-appcheck-recaptcha")
-
-  // Firebase AI (Gemini)
-  implementation("com.google.firebase:firebase-ai")
 
   // Supabase Storage - using BOM for version management
   implementation(platform(libs.supabase.bom))
   implementation(libs.supabase.storage)
   implementation(libs.supabase.auth)
+  implementation(libs.supabase.postgrest)
+  implementation(libs.supabase.realtime)
   implementation(libs.ktor.client.android)
+  implementation(libs.onesignal)
+  implementation(libs.kotlinx.serialization.json)
 
   // AndroidX Core
   implementation(libs.androidx.activity.compose)

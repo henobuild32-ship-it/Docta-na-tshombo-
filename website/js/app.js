@@ -22,6 +22,7 @@
 
   const auth = firebase.auth();
   const db = firebase.firestore();
+  const functions = firebase.functions();
 
   // Global App State
   let currentUser = null; // Firebase Auth User
@@ -47,7 +48,7 @@
     if (user) {
       // User is signed in
       try {
-        const userDoc = await db.collection("users").document(user.uid).get();
+        const userDoc = await db.collection("users").doc(user.uid).get();
         if (userDoc.exists) {
           currentUserData = userDoc.data();
           currentRole = currentUserData.role || "patient";
@@ -230,7 +231,8 @@
       if (role === "doctor") {
         const specialty = document.getElementById("signup-doc-specialty").value.trim() || "Médecine Générale";
         const hospital = document.getElementById("signup-doc-hospital").value.trim() || "Clinique Privée";
-        const rpps = document.getElementById("signup-doc-rpps").value.trim() || "CNOM-2026-" + Math.floor(1000 + Math.random() * 9000);
+        const rpps = document.getElementById("signup-doc-rpps").value.trim();
+        if (!rpps) throw new Error("Le numéro professionnel est obligatoire et ne peut pas être généré automatiquement.");
 
         const docData = {
           id: user.uid,
@@ -505,7 +507,7 @@
             <small style="color:#718096;">Praticien : ${p.doctorName || 'Dr. Soignant'}</small>
           </div>
           <p style="margin-top:8px;"><strong>Traitement :</strong> ${p.medicinesSummary || p.notes || 'Paracétamol 1g'}</p>
-          <button onclick="alert('Téléchargement PDF en cours...')" class="btn btn-ghost btn-sm" style="margin-top:10px;">💾 Télécharger PDF Certifié</button>
+          <button onclick="downloadPrescription('${p.id || ''}')" class="btn btn-ghost btn-sm" style="margin-top:10px;" ${p.pdfPath ? '' : 'disabled'}>💾 Télécharger PDF Certifié</button>
         </div>
       `).join('');
     } catch (e) {
@@ -585,8 +587,16 @@
     }
   };
 
-  window.markReminderTaken = function (id) {
-    alert("✅ Prise de médicament enregistrée avec succès !");
+  window.markReminderTaken = async function (id) {
+    if (!currentUser) return;
+    try {
+      await db.collection("medication_reminders").doc(id).update({
+        isTakenToday: true,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      alert("✅ Prise de médicament enregistrée avec succès !");
+      loadRemindersFromFirestore();
+    } catch (e) { alert("Erreur : " + e.message); }
   };
 
   // Practitioner Tab Handlers
@@ -734,7 +744,14 @@
     container.innerHTML = `<div style="text-align:center; padding:20px; color:#718096;">Discussion en direct. Rédigez un message ci-dessous...</div>`;
 
     // Listen to messages from Firestore
+    const conversationId = [currentUser.uid, "support"].sort().join("_");
+    db.collection("conversations").doc(conversationId).set({
+      participantIds: [currentUser.uid, "support"],
+      participantNames: [currentUserData?.firstName || currentUser.email, "Support Docta"],
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    }, {merge: true}).catch(() => {});
     activeChatUnsubscribe = db.collection("messages")
+      .where("conversationId", "==", conversationId)
       .orderBy("createdAt", "asc")
       .onSnapshot(snap => {
         let msgs = [];
@@ -766,6 +783,7 @@
       const senderName = currentUserData ? (currentUserData.firstName + " " + (currentUserData.lastName || "")).trim() : currentUser.email;
 
       await db.collection("messages").add({
+        conversationId: [currentUser.uid, "support"].sort().join("_"),
         senderId: currentUser.uid,
         senderName: senderName,
         text: text,
@@ -802,75 +820,7 @@
 
   // Vital Signs Scan Simulation
   window.startVitalSignsScan = function () {
-    const pulseCircle = document.getElementById("scan-pulse-circle");
-    const timerText = document.getElementById("scan-timer-text");
-    const bpmVal = document.getElementById("val-bpm");
-    const spo2Val = document.getElementById("val-spo2");
-    const btn = document.getElementById("start-scan-btn");
-
-    btn.disabled = true;
-    let secondsLeft = 15;
-    bpmVal.textContent = "...";
-    spo2Val.textContent = "...";
-
-    const canvas = document.getElementById("ppg-graph");
-    const ctx = canvas.getContext("2d");
-    canvas.width = canvas.offsetWidth;
-    canvas.height = canvas.offsetHeight;
-
-    let step = 0;
-    function drawPPGWave() {
-      ctx.fillStyle = "#1A202C";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      ctx.strokeStyle = "#38A169";
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-
-      for (let x = 0; x < canvas.width; x++) {
-        const y = canvas.height / 2 + Math.sin((x + step) * 0.05) * 25 + Math.sin((x + step) * 0.1) * 10;
-        if (x === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-      }
-      ctx.stroke();
-      step += 4;
-      ppgAnimFrame = requestAnimationFrame(drawPPGWave);
-    }
-    drawPPGWave();
-
-    pulseCircle.style.background = "#E53E3E";
-    pulseCircle.style.boxShadow = "0 0 25px #E53E3E";
-
-    scanTimer = setInterval(() => {
-      secondsLeft--;
-      timerText.textContent = `Mesure du flux sanguin... ${secondsLeft} sec restantes`;
-
-      if (secondsLeft <= 0) {
-        clearInterval(scanTimer);
-        cancelAnimationFrame(ppgAnimFrame);
-        btn.disabled = false;
-
-        const finalBpm = Math.floor(Math.random() * (82 - 68 + 1)) + 68;
-        const finalSpo2 = Math.floor(Math.random() * (99 - 96 + 1)) + 96;
-
-        bpmVal.textContent = `${finalBpm} BPM`;
-        spo2Val.textContent = `${finalSpo2} %`;
-
-        pulseCircle.style.background = "#38A169";
-        pulseCircle.style.boxShadow = "0 0 15px #38A169";
-        timerText.textContent = "✅ Scan terminé ! Données enregistrées dans votre dossier médical.";
-
-        // Save Vitals to Firestore if user logged in
-        if (currentUser) {
-          db.collection("constantes_vitales").add({
-            userId: currentUser.uid,
-            bpm: finalBpm,
-            spo2: finalSpo2,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
-          }).catch(e => console.warn(e));
-        }
-      }
-    }, 1000);
+    alert("Cette fonction nécessite un capteur médical certifié. Aucun résultat ne sera inventé ou enregistré depuis le navigateur.");
   };
 
   // Prescription Generator
@@ -953,11 +903,39 @@
     }
   };
 
-  window.sharePrescription = function (method) {
-    if (method === 'message') alert("✅ Ordonnance envoyée au patient par message !");
-    if (method === 'email') alert("📧 Ordonnance transmise par email à henockaduma2@gmail.com !");
-    if (method === 'sms') alert("📱 Lien SMS envoyé au patient !");
-    if (method === 'download') alert("💾 Ordonnance téléchargée !");
+  window.sharePrescription = async function (method) {
+    const preview = document.getElementById("presc-preview-box");
+    if (!preview) return;
+    if (method === "download") {
+      const blob = new Blob([preview.innerText], {type: "text/plain;charset=utf-8"});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a"); a.href = url; a.download = "ordonnance.txt"; a.click();
+      URL.revokeObjectURL(url); return;
+    }
+    if (method === "message" && currentUser) {
+      await db.collection("messages").add({conversationId: [currentUser.uid, "support"].sort().join("_"), senderId: currentUser.uid, senderName: currentUserData?.firstName || currentUser.email, text: "Ordonnance partagée", createdAt: firebase.firestore.FieldValue.serverTimestamp()});
+    }
+    alert("Action enregistrée. Le canal externe doit être configuré côté serveur.");
+  };
+
+  window.downloadPrescription = async function (prescriptionId) {
+    if (!prescriptionId) return alert("Le PDF est encore en cours de génération.");
+    try {
+      const result = await functions.httpsCallable("getPrescriptionDownloadUrl")({prescriptionId});
+      window.open(result.data.url, "_blank", "noopener");
+    } catch (e) {
+      alert("Téléchargement impossible : " + e.message);
+    }
+  };
+
+  window.savePractitionerSchedule = async function () {
+    if (!currentUser || currentRole !== "doctor") return alert("Connexion praticien requise.");
+    try {
+      await db.collection("doctors").doc(currentUser.uid).update({
+        scheduleUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      alert("Horaires enregistrés.");
+    } catch (e) { alert("Erreur : " + e.message); }
   };
 
   // Practitioner Auto-Validation Scanner

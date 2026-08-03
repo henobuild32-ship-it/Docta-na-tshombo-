@@ -97,6 +97,8 @@
 
   var isAndroid = /Android/.test(navigator.userAgent);
 
+  document.body.classList.add(isIOS ? "platform-ios" : isAndroid ? "platform-android" : "platform-desktop");
+
   var note = document.getElementById("platform-note");
   if (note) {
     if (isIOS) {
@@ -109,6 +111,37 @@
       note.textContent =
         "Sur ordinateur ou mobile : vous pouvez télécharger l'APK Android ou lancer la Web App sans installation.";
     }
+  }
+
+  /* ---------- Boutons adaptés à la plateforme ---------- */
+  function setButtonLabel(btn, text) {
+    var node = btn.querySelector(".btn-label");
+    if (node) node.textContent = text;
+  }
+
+  var apkButtons = document.querySelectorAll("[data-apk-download]");
+  var iosButtons = document.querySelectorAll("[data-ios-modal]");
+
+  if (isIOS) {
+    // Sur iPhone : seul l'ajout à l'écran d'accueil est utile, on masque l'APK
+    apkButtons.forEach(function (b) {
+      var card = b.closest("[data-card]");
+      if (card) card.classList.add("dl-hidden");
+      b.classList.add("hidden");
+      b.setAttribute("aria-hidden", "true");
+      b.setAttribute("tabindex", "-1");
+    });
+    iosButtons.forEach(function (b) { b.classList.add("btn-highlight"); });
+  } else if (isAndroid) {
+    // Sur Android : l'APK est la cible prioritaire, le guide iOS est masqué
+    iosButtons.forEach(function (b) {
+      var card = b.closest("[data-card]");
+      if (card) card.classList.add("dl-hidden");
+      b.classList.add("hidden");
+      b.setAttribute("aria-hidden", "true");
+      b.setAttribute("tabindex", "-1");
+    });
+    apkButtons.forEach(function (b) { b.classList.add("btn-highlight"); });
   }
 
   /* ---------- Téléchargement APK ---------- */

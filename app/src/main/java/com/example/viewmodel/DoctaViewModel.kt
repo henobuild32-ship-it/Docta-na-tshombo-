@@ -9,6 +9,7 @@ import com.example.data.firebase.*
 import com.example.data.models.UserRole
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import com.example.reminders.MedicationReminderScheduler
 
 enum class AppScreen {
     ONBOARDING_LANDING,
@@ -21,7 +22,9 @@ enum class AppScreen {
     PRO_MAIN,
     PRO_CONSULTATION,
     MESSAGING,
+    CONVERSATIONS,
     REMINDERS_THERAPEUTIC,
+    PATIENT_APPOINTMENTS,
     ABOUT,
     PRESCRIPTION_SHARE
 }
@@ -31,6 +34,7 @@ class DoctaViewModel(application: Application) : AndroidViewModel(application) {
     private val authRepo = AuthRepository()
     private val firestoreRepo = FirestoreRepository()
     private val storageRepo = StorageRepository(application)
+    private val prescriptionPdfRepo = PrescriptionPdfRepository(application)
 
     // Local Room DB for offline cache
     private val db = AppDatabase.getDatabase(application)
@@ -44,6 +48,10 @@ class DoctaViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _selectedPractitioner = MutableStateFlow<FirestoreDoctor?>(null)
     val selectedPractitioner: StateFlow<FirestoreDoctor?> = _selectedPractitioner.asStateFlow()
+    private val _selectedAppointment = MutableStateFlow<FirestoreAppointment?>(null)
+    val selectedAppointment: StateFlow<FirestoreAppointment?> = _selectedAppointment.asStateFlow()
+    private var sessionJobs = emptyList<kotlinx.coroutines.Job>()
+    private var messagingJob: kotlinx.coroutines.Job? = null
 
     private val _notificationMessage = MutableStateFlow<String?>(null)
     val notificationMessage: StateFlow<String?> = _notificationMessage.asStateFlow()
@@ -72,8 +80,13 @@ class DoctaViewModel(application: Application) : AndroidViewModel(application) {
     private val _allAppointments = MutableStateFlow<List<FirestoreAppointment>>(emptyList())
     val allAppointments: StateFlow<List<FirestoreAppointment>> = _allAppointments.asStateFlow()
 
+    private val _patientAppointments = MutableStateFlow<List<FirestoreAppointment>>(emptyList())
+    val patientAppointments: StateFlow<List<FirestoreAppointment>> = _patientAppointments.asStateFlow()
+
     private val _chatMessages = MutableStateFlow<List<FirestoreMessage>>(emptyList())
     val chatMessages: StateFlow<List<FirestoreMessage>> = _chatMessages.asStateFlow()
+    private val _conversations = MutableStateFlow<List<FirestoreConversation>>(emptyList())
+    val conversations: StateFlow<List<FirestoreConversation>> = _conversations.asStateFlow()
 
     private val _medicationReminders = MutableStateFlow<List<FirestoreMedicationReminder>>(emptyList())
     val medicationReminders: StateFlow<List<FirestoreMedicationReminder>> = _medicationReminders.asStateFlow()
@@ -84,12 +97,17 @@ class DoctaViewModel(application: Application) : AndroidViewModel(application) {
     // Auth state listener
     init {
         viewModelScope.launch {
-            authRepo.authStateFlow().collect { firebaseUser ->
-                if (firebaseUser != null) {
-                    loadUserProfile(firebaseUser.uid)
-                    observeUserData(firebaseUser.uid)
+            authRepo.authStateFlow().collect { uid ->
+                if (uid != null) {
+                    loadUserProfile(uid)
                 } else {
+                    sessionJobs.forEach { it.cancel() }
+                    sessionJobs = emptyList()
+                    messagingJob?.cancel()
+                    messagingJob = null
                     _userProfile.value = null
+                    _selectedAppointment.value = null
+                    _chatMessages.value = emptyList()
                     _currentScreen.value = AppScreen.ONBOARDING_LANDING
                 }
             }
@@ -110,20 +128,28 @@ class DoctaViewModel(application: Application) : AndroidViewModel(application) {
                     _currentScreen.value == AppScreen.LOGIN) {
                     navigateToMainScreen()
                 }
+                sessionJobs.forEach { it.cancel() }
+                observeUserData(uid)
             }
         }
     }
 
     private fun observeUserData(uid: String) {
-        viewModelScope.launch {
-            val profile = _userProfile.value ?: return@launch
-            if (profile.role == FirestoreUser.ROLE_PATIENT || profile.role == FirestoreUser.ROLE_ADMIN) {
+        val jobs = mutableListOf<kotlinx.coroutines.Job>()
+        val profile = _userProfile.value ?: return
+        if (profile.role == FirestoreUser.ROLE_PATIENT || profile.role == FirestoreUser.ROLE_ADMIN) {
+            jobs += viewModelScope.launch {
+                firestoreRepo.getPatientAppointments(uid).collect { appointments ->
+                    _patientAppointments.value = appointments
+                }
+            }
+            jobs += viewModelScope.launch {
                 firestoreRepo.getUpcomingPatientAppointments(uid).collect { appointments ->
                     _upcomingAppointments.value = appointments
                 }
             }
         }
-        viewModelScope.launch {
+        jobs += viewModelScope.launch {
             val profile = _userProfile.value ?: return@launch
             if (profile.role == FirestoreUser.ROLE_DOCTOR) {
                 firestoreRepo.getDoctorAppointments(uid).collect { appointments ->
@@ -131,22 +157,75 @@ class DoctaViewModel(application: Application) : AndroidViewModel(application) {
                 }
             }
         }
-        viewModelScope.launch {
+        if (_userProfile.value?.role == FirestoreUser.ROLE_PATIENT || _userProfile.value?.role == FirestoreUser.ROLE_ADMIN) jobs += viewModelScope.launch {
             firestoreRepo.getPatientReminders(uid).collect { reminders ->
                 _medicationReminders.value = reminders
             }
         }
-        viewModelScope.launch {
+        if (_userProfile.value?.role == FirestoreUser.ROLE_PATIENT || _userProfile.value?.role == FirestoreUser.ROLE_ADMIN) jobs += viewModelScope.launch {
             firestoreRepo.getPatientPrescriptions(uid).collect { prescriptions ->
                 _prescriptions.value = prescriptions
             }
         }
+        jobs += viewModelScope.launch {
+            firestoreRepo.getConversations(uid).collect { conversations ->
+                _conversations.value = conversations
+            }
+        }
+        sessionJobs = jobs
     }
 
     // ========== NAVIGATION ==========
 
     fun navigateTo(screen: AppScreen) {
         _currentScreen.value = screen
+    }
+
+    fun selectAppointment(appointment: FirestoreAppointment) {
+        _selectedAppointment.value = appointment
+        _currentScreen.value = AppScreen.PRO_CONSULTATION
+    }
+
+    fun openMessaging() {
+        _currentScreen.value = AppScreen.CONVERSATIONS
+    }
+
+    fun startConversationForAppointment(appointment: FirestoreAppointment) {
+        viewModelScope.launch {
+            val uid = authRepo.currentUserId ?: return@launch
+            val profile = _userProfile.value ?: return@launch
+            _selectedAppointment.value = appointment
+            val otherUserId = if (profile.role == FirestoreUser.ROLE_DOCTOR) appointment.patientId else appointment.doctorId
+            val otherUserName = if (profile.role == FirestoreUser.ROLE_DOCTOR) appointment.patientName else appointment.doctorName
+            val conversationId = firestoreRepo.ensureDirectConversation(
+                uid, profile.displayName, otherUserId, otherUserName
+            ).getOrElse { error ->
+                showPushNotification("Erreur de conversation : ${error.message}")
+                return@launch
+            }
+
+            observeMessages(conversationId)
+            _currentScreen.value = AppScreen.MESSAGING
+        }
+    }
+
+    fun selectConversation(conversation: FirestoreConversation) {
+        val profile = _userProfile.value ?: return
+        val otherId = conversation.participantIds.firstOrNull { it != profile.uid }.orEmpty()
+        _selectedAppointment.value = (_patientAppointments.value + _allAppointments.value).firstOrNull {
+            it.patientId == otherId || it.doctorId == otherId
+        }
+        observeMessages(conversation.id)
+        _currentScreen.value = AppScreen.MESSAGING
+    }
+
+    private fun observeMessages(conversationId: String) {
+        messagingJob?.cancel()
+        messagingJob = viewModelScope.launch {
+            firestoreRepo.getMessages(conversationId).collect { messages ->
+                _chatMessages.value = messages
+            }
+        }
     }
 
     private fun navigateToMainScreen() {
@@ -191,16 +270,16 @@ class DoctaViewModel(application: Application) : AndroidViewModel(application) {
                 onSuccess = { user ->
                     // Upload photo if provided
                     if (photoUri != null) {
-                        storageRepo.uploadProfilePhoto(user.uid, Uri.parse(photoUri)).fold(
+                        storageRepo.uploadProfilePhoto(user.id, Uri.parse(photoUri)).fold(
                             onSuccess = { url ->
-                                authRepo.updateUserProfile(user.uid, mapOf("photoUrl" to url))
+                                authRepo.updateUserProfile(user.id, mapOf("photoUrl" to url))
                             },
                             onFailure = {}
                         )
                     }
-                    // Update FCM token
+                    // Update OneSignal subscription id
                     FcmHelper.getToken()?.let { token ->
-                        authRepo.updateFcmToken(user.uid, token)
+                        authRepo.updateFcmToken(user.id, token)
                     }
                     showPushNotification("Bienvenue $firstName ! Votre compte patient est créé.")
                     _activeUserRole.value = UserRole.PATIENT
@@ -237,9 +316,9 @@ class DoctaViewModel(application: Application) : AndroidViewModel(application) {
             )
             result.fold(
                 onSuccess = { user ->
-                    // Create doctor profile in Firestore
+                    // Create doctor profile
                     val doctor = FirestoreDoctor(
-                        userId = user.uid,
+                        userId = user.id,
                         name = doctorName,
                         specialty = specialty,
                         rpps = rppsNumber,
@@ -255,9 +334,9 @@ class DoctaViewModel(application: Application) : AndroidViewModel(application) {
                     firestoreRepo.createDoctor(doctor)
 
                     if (photoUri != null) {
-                        storageRepo.uploadProfilePhoto(user.uid, Uri.parse(photoUri)).fold(
+                        storageRepo.uploadProfilePhoto(user.id, Uri.parse(photoUri)).fold(
                             onSuccess = { url ->
-                                authRepo.updateUserProfile(user.uid, mapOf("photoUrl" to url))
+                                authRepo.updateUserProfile(user.id, mapOf("photoUrl" to url))
                             },
                             onFailure = {}
                         )
@@ -265,16 +344,16 @@ class DoctaViewModel(application: Application) : AndroidViewModel(application) {
 
                     if (documentUri != null) {
                         val fileName = "cps_diplome_${System.currentTimeMillis()}"
-                        storageRepo.uploadDoctorDocument(user.uid, Uri.parse(documentUri), fileName).fold(
+                        storageRepo.uploadDoctorDocument(user.id, Uri.parse(documentUri), fileName).fold(
                             onSuccess = { url ->
-                                firestoreRepo.updateDoctor(doctor.id, mapOf("hasDocuments" to true))
+                                firestoreRepo.updateDoctor(user.id, mapOf("hasDocuments" to true))
                             },
                             onFailure = {}
                         )
                     }
 
                     FcmHelper.getToken()?.let { token ->
-                        authRepo.updateFcmToken(user.uid, token)
+                        authRepo.updateFcmToken(user.id, token)
                     }
 
                     showPushNotification("Bienvenue $doctorName ! Votre profil praticien est enregistré.")
@@ -332,8 +411,12 @@ class DoctaViewModel(application: Application) : AndroidViewModel(application) {
             val uid = authRepo.currentUserId ?: return@launch
             storageRepo.uploadProfilePhoto(uid, Uri.parse(photoUri)).fold(
                 onSuccess = { url ->
-                    authRepo.updateUserProfile(uid, mapOf("photoUrl" to url))
-                    _userProfile.value = _userProfile.value?.copy(photoUrl = url)
+                    val displayUrl = storageRepo.getSignedUrl(url).getOrElse {
+                        showPushNotification("Photo envoyée, mais son aperçu est indisponible")
+                        return@fold
+                    }
+                    authRepo.updateUserProfile(uid, mapOf("photoPath" to url, "photoUrl" to displayUrl))
+                    _userProfile.value = _userProfile.value?.copy(photoUrl = displayUrl)
                     showPushNotification("Photo de profil mise à jour avec succès.")
                 },
                 onFailure = { error ->
@@ -352,6 +435,14 @@ class DoctaViewModel(application: Application) : AndroidViewModel(application) {
         if (doctor != null) {
             _selectedPractitioner.value = doctor
         }
+        val appointment = _upcomingAppointments.value.firstOrNull { appt ->
+            doctor == null || appt.doctorId == doctor.id
+        }
+        if (appointment == null) {
+            showPushNotification("Aucun rendez-vous actif pour cette téléconsultation")
+            return
+        }
+        _selectedAppointment.value = appointment
         _currentScreen.value = AppScreen.TELECONSULTATION
     }
 
@@ -418,15 +509,99 @@ class DoctaViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun updateAppointment(appointmentId: String, time: String, motif: String) {
+        viewModelScope.launch {
+            firestoreRepo.updateAppointment(
+                appointmentId,
+                mapOf("time" to time.trim(), "motif" to motif.trim())
+            ).fold(
+                onSuccess = { showPushNotification("Rendez-vous modifié") },
+                onFailure = { showPushNotification("Erreur : ${it.message}") }
+            )
+        }
+    }
+
+    fun updateAppointmentStatus(appointmentId: String, status: String) {
+        viewModelScope.launch {
+            firestoreRepo.updateAppointmentStatus(appointmentId, status).fold(
+                onSuccess = { showPushNotification("Statut du rendez-vous mis à jour") },
+                onFailure = { showPushNotification("Erreur : ${it.message}") }
+            )
+        }
+    }
+
+    fun createDoctorAppointment(patientId: String, patientName: String, date: String, time: String, type: String, motif: String) {
+        viewModelScope.launch {
+            val doctorId = authRepo.currentUserId ?: return@launch
+            val doctorName = _userProfile.value?.displayName.orEmpty()
+            val appointment = FirestoreAppointment(
+                patientId = patientId,
+                patientName = patientName,
+                doctorId = doctorId,
+                doctorName = doctorName,
+                date = date,
+                time = time,
+                type = type,
+                motif = motif,
+                status = FirestoreAppointment.STATUS_CONFIRMED
+            )
+            firestoreRepo.createAppointment(appointment).fold(
+                onSuccess = { showPushNotification("Rendez-vous créé et transmis au patient") },
+                onFailure = { showPushNotification("Erreur : ${it.message}") }
+            )
+        }
+    }
+
+    fun issuePrescriptionForPatient(patientId: String, patientName: String, medicine: String, dosage: String, duration: String, notes: String) {
+        viewModelScope.launch {
+            val doctorId = authRepo.currentUserId ?: return@launch
+            if (medicine.isBlank() || dosage.isBlank()) {
+                showPushNotification("Médicament et posologie requis")
+                return@launch
+            }
+            val prescription = FirestorePrescription(
+                doctorId = doctorId,
+                doctorName = _userProfile.value?.displayName.orEmpty(),
+                patientId = patientId,
+                patientName = patientName,
+                medicinesSummary = medicine.trim(),
+                dosage = dosage.trim(),
+                duration = duration.trim(),
+                notes = notes.trim(),
+                reference = "ORD-${System.currentTimeMillis()}",
+                isSigned = true
+            )
+            firestoreRepo.createPrescription(prescription).fold(
+                onSuccess = { showPushNotification("Ordonnance enregistrée; le PDF sera généré par le serveur") },
+                onFailure = { showPushNotification("Erreur : ${it.message}") }
+            )
+        }
+    }
+
     // ========== MESSAGING ==========
 
     fun sendChatMessage(text: String) {
         viewModelScope.launch {
+            if (text.isBlank()) return@launch
             val uid = authRepo.currentUserId ?: return@launch
             val profile = _userProfile.value ?: return@launch
 
+            val appointment = _selectedAppointment.value ?: run {
+                showPushNotification("Sélectionnez d'abord un patient")
+                return@launch
+            }
+            val otherUserId = if (profile.role == FirestoreUser.ROLE_DOCTOR) appointment.patientId else appointment.doctorId
+            val otherUserName = if (profile.role == FirestoreUser.ROLE_DOCTOR) appointment.patientName else appointment.doctorName
+            val conversationId = firestoreRepo.ensureDirectConversation(
+                uid, profile.displayName, otherUserId, otherUserName
+            ).getOrElse { error ->
+                showPushNotification("Erreur de conversation : ${error.message}")
+                return@launch
+            }
+            observeMessages(conversationId)
+
             val message = FirestoreMessage(
-                conversationId = "main_chat_$uid",
+                conversationId = conversationId,
                 senderId = uid,
                 senderName = profile.displayName,
                 text = text
@@ -456,7 +631,10 @@ class DoctaViewModel(application: Application) : AndroidViewModel(application) {
             )
 
             firestoreRepo.createReminder(reminder).fold(
-                onSuccess = { showPushNotification("Rappel de traitement programmé pour $name ($time)") },
+                onSuccess = {
+                    MedicationReminderScheduler.schedule(getApplication(), reminder)
+                    showPushNotification("Rappel de traitement programmé pour $name ($time)")
+                },
                 onFailure = { showPushNotification("Erreur: ${it.message}") }
             )
         }
@@ -480,12 +658,16 @@ class DoctaViewModel(application: Application) : AndroidViewModel(application) {
     fun issueDigitalPrescription(medicinesText: String, doctorName: String) {
         viewModelScope.launch {
             val uid = authRepo.currentUserId ?: return@launch
+            val appointment = _selectedAppointment.value ?: run {
+                showPushNotification("Aucun patient sélectionné")
+                return@launch
+            }
 
             val prescription = FirestorePrescription(
                 doctorId = uid,
                 doctorName = doctorName,
-                patientId = _selectedPractitioner.value?.userId ?: "",
-                patientName = _userProfile.value?.displayName ?: "",
+                patientId = appointment.patientId,
+                patientName = appointment.patientName,
                 medicinesSummary = medicinesText,
                 isSigned = true
             )
@@ -497,12 +679,35 @@ class DoctaViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun downloadPrescriptionPdf(prescription: FirestorePrescription) {
+        viewModelScope.launch {
+            prescriptionPdfRepo.download(prescription).fold(
+                onSuccess = { showPushNotification("PDF enregistré dans Téléchargements/Docta : $it") },
+                onFailure = { showPushNotification("Téléchargement impossible : ${it.message}") }
+            )
+        }
+    }
+
     // ========== PRACTITIONER ==========
 
     fun togglePractitionerPresence() {
-        _isPractitionerPresent.value = !_isPractitionerPresent.value
-        val statusText = if (_isPractitionerPresent.value) "En consultation" else "Absent"
-        showPushNotification("Cabinet statut : $statusText")
+        setPractitionerPresence(!_isPractitionerPresent.value)
+    }
+
+    fun setPractitionerPresence(isPresent: Boolean) {
+        viewModelScope.launch {
+            val uid = authRepo.currentUserId ?: return@launch
+            firestoreRepo.updateDoctor(
+                uid,
+                mapOf("isAvailable" to isPresent, "isOnlineForTeleconsult" to isPresent)
+            ).fold(
+                onSuccess = {
+                    _isPractitionerPresent.value = isPresent
+                    showPushNotification(if (isPresent) "Cabinet disponible" else "Cabinet indisponible")
+                },
+                onFailure = { showPushNotification("Erreur : ${it.message}") }
+            )
+        }
     }
 
     // ========== NOTIFICATIONS ==========

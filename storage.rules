@@ -40,7 +40,7 @@ service firebase.storage {
       );
 
       // Doctors can upload their verification documents
-      allow write: if isAuthenticated() && isDoctor()
+      allow write: if isAuthenticated() && isDoctor() && isOwner(doctorId)
         && request.resource.size < 10 * 1024 * 1024  // 10MB max
         && (request.resource.contentType.matches('image/.*') ||
             request.resource.contentType.matches('application/pdf'));
@@ -54,21 +54,20 @@ service firebase.storage {
         isOwner(patientId) ||
         isAdmin()
       );
-
-      // Doctors can upload prescriptions for patients
-      allow write: if isAuthenticated() && (
-        isDoctor() || isAdmin()
-      ) && request.resource.size < 10 * 1024 * 1024  // 10MB max
-        && request.resource.contentType.matches('application/pdf');
+      // Les PDF sont générés exclusivement par le backend Admin SDK.
+      allow write: if false;
     }
 
     // ===== CONVERSATION ATTACHMENTS =====
     match /conversations/{conversationId}/attachments/{fileName} {
-      // Conversation participants can read attachments
-      allow read: if isAuthenticated();
+      function isParticipant() {
+        return isAuthenticated() && request.auth.uid in
+          firestore.get(/databases/(default)/documents/conversations/$(conversationId)).data.participantIds;
+      }
+      allow read: if isParticipant();
 
       // Authenticated users can upload attachments
-      allow write: if isAuthenticated()
+      allow write: if isParticipant()
         && request.resource.size < 20 * 1024 * 1024  // 20MB max
         && (request.resource.contentType.matches('image/.*') ||
             request.resource.contentType.matches('application/pdf') ||

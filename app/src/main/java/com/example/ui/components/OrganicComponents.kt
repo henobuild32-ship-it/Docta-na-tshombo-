@@ -336,14 +336,16 @@ fun GlassChip(
 
 /**
  * ✨ Element Signature "Liquid Glass" — Health Hero Card (Wow Factor ~40% Screen Height)
+ * Note: Les données de santé (healthScore, spO2, etc.) doivent venir d'une source externe
+ * ou être laissées vides si non disponibles. Les valeurs par défaut sont neutres.
  */
 @Composable
 fun LiquidGlassHealthHeroCard(
     userName: String,
-    healthScore: Int = 94,
-    spO2: String = "98%",
-    heartRate: String = "72 bpm",
-    bp: String = "12/8",
+    healthScore: Int? = null, // null = non disponible
+    spO2: String? = null, // null = non disponible
+    heartRate: String? = null, // null = non disponible
+    bp: String? = null, // null = non disponible
     onStartTeleconsult: () -> Unit,
     onBookAppointment: () -> Unit,
     isSeniorMode: Boolean = false,
@@ -424,13 +426,13 @@ fun LiquidGlassHealthHeroCard(
                         )
                         Row(verticalAlignment = Alignment.Bottom) {
                             Text(
-                                text = "$healthScore",
+                                text = healthScore?.toString() ?: "--",
                                 fontSize = if (isSeniorMode) 42.sp else 36.sp,
                                 fontWeight = FontWeight.ExtraBold,
                                 color = Color.White
                             )
                             Text(
-                                text = " /100 • Excellent",
+                                text = if (healthScore != null) " /100 • Excellent" else " /100",
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = WaterGreenLight,
@@ -463,7 +465,7 @@ fun LiquidGlassHealthHeroCard(
                                     listOf(iOSSuccess, WaterGreen, Color.White, iOSSuccess)
                                 ),
                                 startAngle = pulseAngle,
-                                sweepAngle = (healthScore / 100f) * 360f,
+                                sweepAngle = ((healthScore ?: 0) / 100f) * 360f,
                                 useCenter = false,
                                 style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
                             )
@@ -477,7 +479,7 @@ fun LiquidGlassHealthHeroCard(
                                 modifier = Modifier.size(24.dp)
                             )
                             Text(
-                                text = "$healthScore%",
+                                text = healthScore?.let { "$it%" } ?: "--%",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White
@@ -495,19 +497,19 @@ fun LiquidGlassHealthHeroCard(
                 ) {
                     VitalCapsuleItem(
                         label = "Pouls",
-                        value = heartRate,
+                        value = heartRate ?: "-- bpm",
                         icon = Icons.Outlined.MonitorHeart,
                         modifier = Modifier.weight(1f)
                     )
                     VitalCapsuleItem(
                         label = "SpO2",
-                        value = spO2,
+                        value = spO2 ?: "--%",
                         icon = Icons.Outlined.Air,
                         modifier = Modifier.weight(1f)
                     )
                     VitalCapsuleItem(
                         label = "Tension",
-                        value = bp,
+                        value = bp ?: "--/--",
                         icon = Icons.Outlined.Thermostat,
                         modifier = Modifier.weight(1f)
                     )

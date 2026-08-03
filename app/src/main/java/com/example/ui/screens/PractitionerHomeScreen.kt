@@ -90,6 +90,11 @@ fun PractitionerHomeScreen(
     appointments: List<FirestoreAppointment>,
     onStartConsultationForPatient: (FirestoreAppointment) -> Unit,
     onNavigateToMessaging: () -> Unit,
+    onUpdateAppointment: (String, String, String) -> Unit,
+    onUpdateAppointmentStatus: (String, String) -> Unit,
+    onSetPresence: (Boolean) -> Unit,
+    onCreateAppointment: (String, String, String, String, String, String) -> Unit,
+    onIssuePrescription: (String, String, String, String, String, String) -> Unit,
     isSeniorMode: Boolean = false,
     onLogout: () -> Unit = {}
 ) {
@@ -114,23 +119,31 @@ fun PractitionerHomeScreen(
     // Filters & Search
     var agendaFilter by remember { mutableStateOf("Tous") } // Tous, Présentiel, Téléconsultation, À venir, Passés
     var patientSearchQuery by remember { mutableStateOf("") }
-    var manualRefreshTrigger by remember { mutableStateOf(0) }
 
-    // Sample Patients list (populated from Firestore appointments + patient catalog)
-    val patientCatalog = remember {
-        mutableStateListOf(
-            PatientRecord("p1", "Jean Mukendi", "34 ans", "M", "+243 81 234 5678", "jean.m@docta.cd", "O+", "Pénicilline", "Hypertension modérée", "01/08/2026"),
-            PatientRecord("p2", "Marie Tshilombo", "28 ans", "F", "+243 99 876 5432", "marie.t@docta.cd", "A+", "Aucune", "Diabète Type 2", "28/07/2026"),
-            PatientRecord("p3", "Paul Kande", "52 ans", "M", "+243 85 111 2223", "paul.k@docta.cd", "B+", "Aspirine", "Asthme", "15/07/2026"),
-            PatientRecord("p4", "Grace Kabange", "24 ans", "F", "+243 82 444 5556", "grace.k@docta.cd", "AB+", "Poussière", "Aucun", "30/07/2026")
-        )
-    }
-
-    // Auto Refresh every 30 seconds
-    LaunchedEffect(manualRefreshTrigger) {
-        while (true) {
-            delay(30000)
-            Toast.makeText(context, "🔄 Données du cabinet rafraîchies", Toast.LENGTH_SHORT).show()
+    // Patients list dérivée des rendez-vous Firestore (données réelles)
+    // Les patients sont extraits des rendez-vous passés et à venir
+    val patientCatalog = remember(appointments) {
+        mutableStateListOf<PatientRecord>().apply {
+            appointments
+                .distinctBy { it.patientId }
+                .map { appt ->
+                    PatientRecord(
+                        id = appt.patientId,
+                        name = appt.patientName,
+                        age = "-", // À récupérer depuis le profil patient si disponible
+                        gender = "-",
+                        phone = "-",
+                        email = "-",
+                        bloodType = "-",
+                        allergies = "-",
+                        antecedents = "-",
+                        lastConsultDate = appt.date
+                    )
+                }
+                .also { patients ->
+                    clear()
+                    addAll(patients)
+                }
         }
     }
 
@@ -197,8 +210,7 @@ fun PractitionerHomeScreen(
                     ) {
                         // Manual Refresh Button
                         IconButton(onClick = {
-                            manualRefreshTrigger++
-                            Toast.makeText(context, "🔄 Rafraîchissement manuel...", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "Les données Firestore sont synchronisées en temps réel", Toast.LENGTH_SHORT).show()
                         }) {
                             Icon(Icons.Outlined.Refresh, contentDescription = "Rafraîchir", tint = SageDeep)
                         }
@@ -245,6 +257,7 @@ fun PractitionerHomeScreen(
                                             scope.launch {
                                                 delay(400) // Spinner feedback < 2s
                                                 currentStatus = status
+                                                onSetPresence(status == DoctorStatus.PRESENT || status == DoctorStatus.CONSULTATION)
                                                 isUpdatingStatus = false
                                                 Toast.makeText(context, "Statut mis à jour : ${status.label}", Toast.LENGTH_SHORT).show()
                                             }
@@ -440,8 +453,13 @@ fun PractitionerHomeScreen(
                         if (patientName.isBlank() || motifStr.isBlank()) {
                             Toast.makeText(context, "Veuillez remplir le nom et le motif", Toast.LENGTH_SHORT).show()
                         } else {
-                            showAddConsultationDialog = false
-                            Toast.makeText(context, "✅ Consultation enregistrée avec succès !", Toast.LENGTH_SHORT).show()
+                            val patient = patientCatalog.firstOrNull { it.name.equals(patientName.trim(), ignoreCase = true) }
+                            if (patient == null) {
+                                Toast.makeText(context, "Sélectionnez le nom exact d’un patient de votre liste", Toast.LENGTH_LONG).show()
+                            } else {
+                                onCreateAppointment(patient.id, patient.name, dateStr, timeStr, if (apptType.contains("Télé")) "TELECONSULTATION" else "PRESENTIEL", motifStr)
+                                showAddConsultationDialog = false
+                            }
                         }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = SageDeep)
@@ -484,8 +502,8 @@ fun PractitionerHomeScreen(
             },
             confirmButton = {
                 Button(onClick = {
+                    onUpdateAppointment(appt.id, editTime, editMotif)
                     showEditConsultationDialog = null
-                    Toast.makeText(context, "✅ Consultation modifiée !", Toast.LENGTH_SHORT).show()
                 }) {
                     Text("Modifier")
                 }
@@ -505,8 +523,8 @@ fun PractitionerHomeScreen(
             confirmButton = {
                 Button(
                     onClick = {
+                        onUpdateAppointmentStatus(appt.id, FirestoreAppointment.STATUS_CANCELLED)
                         showCancelConsultationDialog = null
-                        Toast.makeText(context, "✅ Rendez-vous annulé. Notification envoyée au patient.", Toast.LENGTH_SHORT).show()
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = Terracotta)
                 ) {
@@ -558,10 +576,10 @@ fun PractitionerHomeScreen(
 
     // 6. Prescription Module Dialog
     showPrescriptionDialog?.let { patient ->
-        var medName by remember { mutableStateOf("Paracétamol 1g") }
-        var poso by remember { mutableStateOf("1 comp 3x/jour") }
-        var duration by remember { mutableStateOf("5 jours") }
-        var advice by remember { mutableStateOf("Prendre après le repas et boire beaucoup d'eau.") }
+        var medName by remember { mutableStateOf("") }
+        var poso by remember { mutableStateOf("") }
+        var duration by remember { mutableStateOf("") }
+        var advice by remember { mutableStateOf("") }
 
         AlertDialog(
             onDismissRequest = { showPrescriptionDialog = null },
@@ -577,9 +595,12 @@ fun PractitionerHomeScreen(
             confirmButton = {
                 Button(
                     onClick = {
-                        val ref = "ORD-2026-" + (1000..9999).random()
-                        showPrescriptionDialog = null
-                        showPrescriptionPreviewModal = ref
+                        if (medName.isBlank() || poso.isBlank()) {
+                            Toast.makeText(context, "Médicament et posologie requis", Toast.LENGTH_SHORT).show()
+                        } else {
+                            onIssuePrescription(patient.id, patient.name, medName, poso, duration, advice)
+                            showPrescriptionDialog = null
+                        }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = SageDeep)
                 ) {
@@ -620,13 +641,13 @@ fun PractitionerHomeScreen(
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         Button(onClick = {
                             showPrescriptionPreviewModal = null
-                            Toast.makeText(context, "📤 Envoyé par message chat !", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "Ouvrez la conversation du patient pour partager le PDF généré", Toast.LENGTH_LONG).show()
                         }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = SageDeep)) {
                             Text("Chat", fontSize = 11.sp)
                         }
                         Button(onClick = {
                             showPrescriptionPreviewModal = null
-                            Toast.makeText(context, "📧 Transmis à henockaduma2@gmail.com !", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "Aucun fournisseur email médical n’est configuré", Toast.LENGTH_LONG).show()
                         }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = Terracotta)) {
                             Text("Email", fontSize = 11.sp)
                         }
@@ -654,7 +675,7 @@ fun PractitionerHomeScreen(
                     7 -> scanStatusText = "Contrôle auprès de l'Ordre des Médecins..."
                     12 -> scanStatusText = "Validation du diplôme et du cachet..."
                     15 -> {
-                        scanStatusText = "✅ Documents validés avec succès en 15s !"
+                        scanStatusText = "Documents téléversés : validation administrative requise"
                         isDone = true
                     }
                 }

@@ -1,70 +1,81 @@
 package com.example.data.firebase
 
-import com.google.firebase.Timestamp
-import com.google.firebase.firestore.DocumentId
-import com.google.firebase.firestore.ServerTimestamp
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
+import kotlinx.datetime.Instant
+import kotlinx.datetime.toLocalDateTime
+import kotlinx.datetime.TimeZone
 
+/**
+ * Modèles mappés sur les colonnes PostgREST (Supabase).
+ * Les classes conservent leur nom historique (Firestore*) pour limiter les
+ * changements dans l'UI ; la persistance est 100% Supabase, sans Firebase.
+ */
+
+@Serializable
 data class FirestoreUser(
-    @DocumentId val uid: String = "",
+    @SerialName("id") val uid: String = "",
     val email: String = "",
-    val firstName: String = "",
-    val lastName: String = "",
+    @SerialName("first_name") val firstName: String = "",
+    @SerialName("last_name") val lastName: String = "",
     val phone: String = "",
+    @SerialName("birth_date") val birthDate: String = "",
+    val gender: String = "",
+    @SerialName("blood_type") val bloodType: String = "",
+    val allergies: List<String> = emptyList(),
+    @SerialName("medical_history") val medicalHistory: List<String> = emptyList(),
     val role: String = ROLE_PATIENT,
-    val photoUrl: String = "",
+    @SerialName("photo_path") val photoUrl: String = "",
     val specialty: String = "",
-    val rppsNumber: String = "",
-    val isVerified: Boolean = false,
-    val isActive: Boolean = true,
-    val isSeniorMode: Boolean = false,
-    val fcmToken: String = "",
-    @ServerTimestamp val createdAt: Timestamp? = null,
-    @ServerTimestamp val updatedAt: Timestamp? = null
+    @SerialName("rpps_number") val rppsNumber: String = "",
+    @SerialName("is_verified") val isVerified: Boolean = false,
+    @SerialName("is_active") val isActive: Boolean = true,
+    @SerialName("is_senior_mode") val isSeniorMode: Boolean = false,
+    @SerialName("onesignal_subscription_id") val onesignalSubscriptionId: String = "",
+    @SerialName("created_at") val createdAt: String? = null,
+    @SerialName("updated_at") val updatedAt: String? = null
 ) {
     companion object {
         const val ROLE_PATIENT = "patient"
         const val ROLE_DOCTOR = "doctor"
         const val ROLE_ADMIN = "admin"
-        const val COLLECTION = "users"
     }
 
     val fullName: String get() = "$firstName $lastName".trim()
     val displayName: String get() = if (fullName.isNotBlank()) fullName else email
 }
 
+@Serializable
 data class FirestoreDoctor(
-    @DocumentId val id: String = "",
-    val userId: String = "",
+    @SerialName("id") val id: String = "",
+    @Transient val userId: String = "",
     val name: String = "",
     val specialty: String = "",
     val address: String = "",
-    val photoUrl: String = "",
+    @SerialName("photo_path") val photoUrl: String = "",
     val rating: Float = 0f,
-    val reviewCount: Int = 0,
+    @SerialName("review_count") val reviewCount: Int = 0,
     val price: String = "",
     val bio: String = "",
-    val rpps: String = "",
-    val isOnlineForTeleconsult: Boolean = true,
-    val isAvailable: Boolean = true,
-    val availableSlots: List<String> = emptyList(),
-    val consultationTypes: List<String> = listOf("PRESENTIEL", "TELECONSULTATION"),
+    @SerialName("professional_number") val rpps: String = "",
+    @SerialName("is_online") val isOnlineForTeleconsult: Boolean = true,
+    @SerialName("is_available") val isAvailable: Boolean = true,
+    @SerialName("available_slots") val availableSlots: List<String> = emptyList(),
+    @SerialName("consultation_types") val consultationTypes: List<String> = listOf("PRESENTIEL", "TELECONSULTATION"),
     // ===== Parcours & Formation =====
     val degree: String = "",
-    val educationLevel: String = "",
-    val studyDuration: String = "",
+    @SerialName("education_level") val educationLevel: String = "",
+    @SerialName("study_duration") val studyDuration: String = "",
     val universities: List<String> = emptyList(),
     val trainings: List<String> = emptyList(),
-    val graduationYear: String = "",
+    @SerialName("graduation_year") val graduationYear: String = "",
     // ===== Documents & Vérification =====
-    val hasDocuments: Boolean = false,
-    val documentsVerified: Boolean = false,
-    @ServerTimestamp val createdAt: Timestamp? = null,
-    @ServerTimestamp val updatedAt: Timestamp? = null
+    @SerialName("has_documents") val hasDocuments: Boolean = false,
+    @SerialName("documents_verified") val documentsVerified: Boolean = false,
+    @SerialName("created_at") val createdAt: String? = null,
+    @SerialName("updated_at") val updatedAt: String? = null
 ) {
-    companion object {
-        const val COLLECTION = "doctors"
-    }
-
     val educationSummary: String
         get() = buildString {
             if (degree.isNotBlank()) append(degree)
@@ -75,36 +86,37 @@ data class FirestoreDoctor(
         }
 }
 
+@Serializable
 data class DoctorEducation(
     val degree: String = "",
-    val educationLevel: String = "",
-    val studyDuration: String = "",
+    @SerialName("education_level") val educationLevel: String = "",
+    @SerialName("study_duration") val studyDuration: String = "",
     val universities: List<String> = emptyList(),
     val trainings: List<String> = emptyList(),
-    val graduationYear: String = ""
+    @SerialName("graduation_year") val graduationYear: String = ""
 )
 
+@Serializable
 data class FirestoreAppointment(
-    @DocumentId val id: String = "",
-    val patientId: String = "",
-    val patientName: String = "",
-    val doctorId: String = "",
-    val doctorName: String = "",
-    val doctorSpecialty: String = "",
-    val doctorAvatar: String = "",
+    @SerialName("id") val id: String = "",
+    @SerialName("patient_id") val patientId: String = "",
+    @SerialName("patient_name") val patientName: String = "",
+    @SerialName("doctor_id") val doctorId: String = "",
+    @SerialName("doctor_name") val doctorName: String = "",
+    @SerialName("doctor_specialty") val doctorSpecialty: String = "",
+    @SerialName("doctor_avatar") val doctorAvatar: String = "",
     val date: String = "",
     val time: String = "",
     val type: String = "TELECONSULTATION",
     val motif: String = "",
     val status: String = STATUS_PENDING,
-    val userNote: String = "",
+    @SerialName("patient_note") val userNote: String = "",
     val address: String = "",
-    val consultationId: String = "",
-    @ServerTimestamp val createdAt: Timestamp? = null,
-    @ServerTimestamp val updatedAt: Timestamp? = null
+    @Transient val consultationId: String = "",
+    @SerialName("created_at") val createdAt: String? = null,
+    @SerialName("updated_at") val updatedAt: String? = null
 ) {
     companion object {
-        const val COLLECTION = "appointments"
         const val STATUS_PENDING = "pending"
         const val STATUS_CONFIRMED = "confirmed"
         const val STATUS_CANCELLED = "cancelled"
@@ -113,112 +125,138 @@ data class FirestoreAppointment(
     }
 }
 
+@Serializable
 data class FirestoreConversation(
-    @DocumentId val id: String = "",
-    val participantIds: List<String> = emptyList(),
-    val participantNames: List<String> = emptyList(),
-    val lastMessage: String = "",
-    val lastMessageSenderId: String = "",
-    @ServerTimestamp val lastMessageAt: Timestamp? = null,
-    val unreadCount: Map<String, Int> = emptyMap(),
-    @ServerTimestamp val createdAt: Timestamp? = null
-) {
-    companion object {
-        const val COLLECTION = "conversations"
-    }
-}
+    @SerialName("id") val id: String = "",
+    @SerialName("participant_ids") val participantIds: List<String> = emptyList(),
+    @SerialName("participant_names") val participantNames: List<String> = emptyList(),
+    @SerialName("last_message") val lastMessage: String = "",
+    @SerialName("last_message_sender_id") val lastMessageSenderId: String = "",
+    @SerialName("last_message_at") val lastMessageAt: String? = null,
+    @Transient val unreadCount: Map<String, Int> = emptyMap(),
+    @SerialName("created_at") val createdAt: String? = null
+)
 
+@Serializable
 data class FirestoreMessage(
-    @DocumentId val id: String = "",
-    val conversationId: String = "",
-    val senderId: String = "",
-    val senderName: String = "",
-    val text: String = "",
-    val attachmentUrl: String = "",
-    val attachmentName: String = "",
+    @SerialName("id") val id: String = "",
+    @SerialName("conversation_id") val conversationId: String = "",
+    @SerialName("sender_id") val senderId: String = "",
+    @SerialName("sender_name") val senderName: String = "",
+    @SerialName("body") val text: String = "",
+    @SerialName("attachment_path") val attachmentUrl: String = "",
+    @SerialName("attachment_name") val attachmentName: String = "",
     val status: String = STATUS_SENT,
-    @ServerTimestamp val createdAt: Timestamp? = null
+    @SerialName("created_at") val createdAt: String? = null
 ) {
     companion object {
-        const val COLLECTION = "messages"
         const val STATUS_SENT = "sent"
         const val STATUS_DELIVERED = "delivered"
         const val STATUS_READ = "read"
     }
 }
 
+@Serializable
 data class FirestorePrescription(
-    @DocumentId val id: String = "",
-    val doctorId: String = "",
-    val doctorName: String = "",
-    val patientId: String = "",
-    val patientName: String = "",
-    val medicinesSummary: String = "",
+    @SerialName("id") val id: String = "",
+    @SerialName("doctor_id") val doctorId: String = "",
+    @SerialName("doctor_name") val doctorName: String = "",
+    @SerialName("patient_id") val patientId: String = "",
+    @SerialName("patient_name") val patientName: String = "",
+    @SerialName("medicine") val medicinesSummary: String = "",
+    val diagnosis: String = "",
+    val dosage: String = "",
+    val duration: String = "",
+    val reference: String = "",
+    @SerialName("signature_hash") val signatureHash: String = "",
     val notes: String = "",
-    val isSigned: Boolean = false,
-    val pdfUrl: String = "",
-    @ServerTimestamp val createdAt: Timestamp? = null
-) {
-    companion object {
-        const val COLLECTION = "prescriptions"
-    }
-}
+    @Transient val isSigned: Boolean = false,
+    @Transient val pdfUrl: String = "",
+    @SerialName("pdf_path") val pdfPath: String = "",
+    @SerialName("pdf_generated_at") val pdfGeneratedAt: String? = null,
+    @SerialName("created_at") val createdAt: String? = null
+)
 
+@Serializable
+data class FirestoreMedicalProfile(
+    @SerialName("patient_id") val patientId: String = "",
+    val gender: String = "",
+    @SerialName("birth_date") val birthDate: String = "",
+    @SerialName("blood_type") val bloodType: String = "",
+    val allergies: List<String> = emptyList(),
+    @SerialName("medical_history") val medicalHistory: List<String> = emptyList(),
+    @SerialName("current_treatments") val currentTreatments: List<String> = emptyList(),
+    @SerialName("emergency_contact_name") val emergencyContactName: String = "",
+    @SerialName("emergency_contact_phone") val emergencyContactPhone: String = "",
+    @SerialName("updated_at") val updatedAt: String? = null
+)
+
+@Serializable
 data class FirestoreMedicationReminder(
-    @DocumentId val id: String = "",
-    val patientId: String = "",
-    val medicineName: String = "",
+    @SerialName("id") val id: String = "",
+    @SerialName("patient_id") val patientId: String = "",
+    @SerialName("medicine_name") val medicineName: String = "",
     val dosage: String = "",
     val frequency: String = "",
-    val timeOfDay: String = "",
-    val isTakenToday: Boolean = false,
-    val startDate: String = "",
+    @SerialName("time_of_day") val timeOfDay: String = "",
+    @SerialName("is_taken_today") val isTakenToday: Boolean = false,
+    @SerialName("start_date") val startDate: String = "",
     val notes: String = "",
-    @ServerTimestamp val createdAt: Timestamp? = null,
-    @ServerTimestamp val updatedAt: Timestamp? = null
-) {
-    companion object {
-        const val COLLECTION = "medication_reminders"
-    }
-}
+    @SerialName("created_at") val createdAt: String? = null,
+    @SerialName("updated_at") val updatedAt: String? = null
+)
 
+@Serializable
 data class FirestoreNotification(
-    @DocumentId val id: String = "",
-    val userId: String = "",
+    @SerialName("id") val id: String = "",
+    @SerialName("user_id") val userId: String = "",
     val title: String = "",
     val body: String = "",
     val type: String = "",
-    val relatedId: String = "",
-    val isRead: Boolean = false,
-    @ServerTimestamp val createdAt: Timestamp? = null
-) {
-    companion object {
-        const val COLLECTION = "notifications"
-    }
-}
+    @SerialName("related_id") val relatedId: String = "",
+    @SerialName("is_read") val isRead: Boolean = false,
+    @SerialName("created_at") val createdAt: String? = null
+)
 
+@Serializable
 data class FirestoreSpecialty(
-    @DocumentId val id: String = "",
+    @SerialName("id") val id: String = "",
     val name: String = "",
     val description: String = "",
-    val iconName: String = "",
-    val displayOrder: Int = 0
-) {
-    companion object {
-        const val COLLECTION = "specialties"
+    @SerialName("icon_name") val iconName: String = "",
+    @SerialName("display_order") val displayOrder: Int = 0
+)
+
+@Serializable
+data class FirestoreReview(
+    @SerialName("id") val id: String = "",
+    @SerialName("doctor_id") val doctorId: String = "",
+    @SerialName("patient_id") val patientId: String = "",
+    @Transient val patientName: String = "",
+    val rating: Float = 0f,
+    val comment: String = "",
+    @SerialName("created_at") val createdAt: String? = null
+)
+
+/**
+ * Aide pour l'UI : convertir les timestamps ISO-8601 renvoyés par Supabase.
+ * Anciennement Firestore Timestamp.toDate().
+ */
+fun String?.toDisplayDate(): String {
+    if (isNullOrBlank()) return ""
+    return try {
+        Instant.parse(this).toLocalDateTime(TimeZone.currentSystemDefault()).date.toString()
+    } catch (e: Exception) {
+        take(10)
     }
 }
 
-data class FirestoreReview(
-    @DocumentId val id: String = "",
-    val doctorId: String = "",
-    val patientId: String = "",
-    val patientName: String = "",
-    val rating: Float = 0f,
-    val comment: String = "",
-    @ServerTimestamp val createdAt: Timestamp? = null
-) {
-    companion object {
-        const val COLLECTION = "reviews"
+fun String?.toDisplayTime(): String {
+    if (isNullOrBlank()) return ""
+    return try {
+        val dt = Instant.parse(this).toLocalDateTime(TimeZone.currentSystemDefault())
+        "${dt.hour.toString().padStart(2, '0')}:${dt.minute.toString().padStart(2, '0')}"
+    } catch (e: Exception) {
+        ""
     }
 }

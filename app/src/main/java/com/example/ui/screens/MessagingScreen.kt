@@ -18,11 +18,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.firebase.FirestoreMessage
+import com.example.data.firebase.toDisplayTime
 import com.example.ui.theme.*
 
 @Composable
 fun MessagingScreen(
     messages: List<FirestoreMessage>,
+    currentUserId: String,
+    conversationTitle: String,
     onSendMessage: (String) -> Unit,
     onBack: () -> Unit,
     isSeniorMode: Boolean
@@ -56,7 +59,7 @@ fun MessagingScreen(
                     Spacer(modifier = Modifier.width(10.dp))
                     Column {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("Dr. Amina Kalala", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        Text(conversationTitle, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                             Spacer(modifier = Modifier.width(4.dp))
                             Icon(Icons.Outlined.Verified, contentDescription = "Vérifié", tint = SageDeep, modifier = Modifier.size(16.dp))
                         }
@@ -78,7 +81,7 @@ fun MessagingScreen(
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 items(messages) { msg ->
-                    val isMe = msg.senderId != "doctor"
+                    val isMe = msg.senderId == currentUserId
                     Box(
                         modifier = Modifier.fillMaxWidth(),
                         contentAlignment = if (!isMe) Alignment.CenterStart else Alignment.CenterEnd
@@ -121,7 +124,7 @@ fun MessagingScreen(
 
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
-                                    text = msg.createdAt?.toDate()?.time?.toString() ?: "À l'instant",
+                                    text = msg.createdAt?.toDisplayTime()?.takeIf { it.isNotBlank() } ?: "À l'instant",
                                     fontSize = 9.sp,
                                     color = if (!isMe) TextMuted else WaterGreenLight,
                                     modifier = Modifier.align(Alignment.End)

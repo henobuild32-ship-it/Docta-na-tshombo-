@@ -12,6 +12,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-functions-compat.js"></script>
   <style>
     /* Custom Web App UI Overlays & Components */
     .app-header {
@@ -388,7 +389,7 @@
               <span>Dimanche & Congés :</span>
               <input type="text" value="Fermé" style="padding:8px; border-radius:6px; border:1px solid #CBD5E0;" />
             </label>
-            <button onclick="alert('Horaires sauvegardés avec succès !')" class="btn btn-primary btn-sm" style="margin-top:10px; align-self:flex-start;">Enregistrer les horaires</button>
+            <button onclick="savePractitionerSchedule()" class="btn btn-primary btn-sm" style="margin-top:10px; align-self:flex-start;">Enregistrer les horaires</button>
           </div>
         </div>
       </div>

@@ -1,206 +1,123 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Helper functions
-    function isAuthenticated() {
-      return request.auth != null;
+    function signedIn() { return request.auth != null; }
+    function uid() { return request.auth.uid; }
+    function user() { return get(/databases/$(database)/documents/users/$(uid())).data; }
+    function isAdmin() { return signedIn() && user().role == 'admin'; }
+    function isDoctor() { return signedIn() && user().role == 'doctor'; }
+    function isPatient() { return signedIn() && user().role == 'patient'; }
+    function unchanged(fields) { return request.resource.data.diff(resource.data).affectedKeys().hasNone(fields); }
+    function conversationParticipant(conversationId) {
+      return signedIn() && uid() in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds;
     }
 
-    function isOwner(uid) {
-      return isAuthenticated() && request.auth.uid == uid;
-    }
-
-    function isAdmin() {
-      return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
-    }
-
-    function isDoctor() {
-      return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'doctor';
-    }
-
-    function isPatient() {
-      return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'patient';
-    }
-
-    // ===== USERS =====
     match /users/{userId} {
-      // Authenticated users can read profiles (e.g. patients viewing doctor names, doctors viewing patient names)
-      allow read: if isAuthenticated();
-
-      // Users can create their own profile during registration
-      allow create: if isAuthenticated() && isOwner(userId);
-
-      // Users can update their own profile
-      // Admins can update any profile
-      allow update: if isAuthenticated() && (isOwner(userId) || isAdmin());
-
-      // Only admins can delete users
+      allow create: if signedIn() && uid() == userId
+        && request.resource.data.uid == uid()
+        && request.resource.data.role in ['patient', 'doctor'];
+      allow read: if signedIn() && (uid() == userId || isAdmin());
+      allow update: if signedIn() && (
+        isAdmin() || (uid() == userId && unchanged(['uid', 'role', 'isVerified', 'isActive']))
+      );
       allow delete: if isAdmin();
     }
 
-    // ===== DOCTORS =====
     match /doctors/{doctorId} {
-      // Anyone authenticated can read doctor profiles (for search/listing)
-      allow read: if isAuthenticated();
-
-      // Authenticated doctors can create their own profile
-      allow create: if isAuthenticated();
-
-      // Doctors can update their own profile
-      // Admins can update any doctor profile
-      allow update: if isAuthenticated();
-
-      // Only admins can delete doctor profiles
+      allow read: if signedIn();
+      allow create: if isDoctor() && uid() == doctorId
+        && request.resource.data.userId == uid()
+        && request.resource.data.documentsVerified == false;
+      allow update: if isAdmin() || (isDoctor() && uid() == doctorId
+        && unchanged(['userId', 'documentsVerified']));
       allow delete: if isAdmin();
     }
 
-    // ===== APPOINTMENTS =====
     match /appointments/{appointmentId} {
-      // Patients can read their own appointments
-      // Doctors can read appointments assigned to them
-      // Admins can read all appointments
-      allow read: if isAuthenticated() && (
-        isOwner(get(/databases/$(database)/documents/appointments/$(appointmentId)).data.patientId) ||
-        isOwner(get(/databases/$(database)/documents/appointments/$(appointmentId)).data.doctorId) ||
-        isAdmin()
+      allow read: if signedIn() && (resource.data.patientId == uid() || resource.data.doctorId == uid() || isAdmin());
+      allow create: if (
+        (isPatient() && request.resource.data.patientId == uid() && request.resource.data.status == 'pending') ||
+        (isDoctor() && request.resource.data.doctorId == uid() && request.resource.data.status == 'confirmed')
+      ) && request.resource.data.doctorId is string
+        && request.resource.data.doctorId.size() > 0
+        && exists(/databases/$(database)/documents/doctors/$(request.resource.data.doctorId));
+      allow update: if signedIn() && (
+        (resource.data.patientId == uid()
+          && request.resource.data.status == 'cancelled'
+          && unchanged(['patientId', 'doctorId', 'patientName', 'doctorName', 'date', 'time', 'type', 'motif'])) ||
+        (resource.data.doctorId == uid()
+          && request.resource.data.status in ['pending', 'confirmed', 'cancelled', 'completed', 'no_show']
+          && unchanged(['patientId', 'doctorId', 'patientName', 'doctorName'])) || isAdmin()
       );
-
-      // Authenticated users can create appointments
-      allow create: if isAuthenticated();
-
-      // Patients can cancel their own appointments
-      // Doctors can confirm/complete appointments assigned to them
-      // Admins can update any appointment
-      allow update: if isAuthenticated() && (
-        isOwner(get(/databases/$(database)/documents/appointments/$(appointmentId)).data.patientId) ||
-        isOwner(get(/databases/$(database)/documents/appointments/$(appointmentId)).data.doctorId) ||
-        isAdmin()
-      );
-
-      // Only admins can delete appointments
       allow delete: if isAdmin();
     }
 
-    // ===== CONVERSATIONS =====
     match /conversations/{conversationId} {
-      // Only participants can read conversations
-      allow read: if isAuthenticated() &&
-        request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds;
-
-      // Any authenticated user can create a conversation
-      allow create: if isAuthenticated();
-
-      // Participants can update conversation metadata
-      allow update: if isAuthenticated() &&
-        request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds;
+      allow read: if signedIn() && uid() in resource.data.participantIds;
+      allow create: if signedIn() && uid() in request.resource.data.participantIds
+        && request.resource.data.participantIds.size() == 2
+        && request.resource.data.participantIds[0] != request.resource.data.participantIds[1];
+      allow update: if conversationParticipant(conversationId)
+        && unchanged(['participantIds', 'participantNames']);
     }
 
-    // ===== MESSAGES =====
     match /messages/{messageId} {
-      // Only conversation participants can read messages
-      allow read: if isAuthenticated() &&
-        request.auth.uid in get(/databases/$(database)/documents/conversations/$(get(/databases/$(database)/documents/messages/$(messageId)).data.conversationId)).data.participantIds;
-
-      // Authenticated users can send messages
-      allow create: if isAuthenticated();
-
-      // No updates or deletes for messages (audit trail)
+      allow read: if conversationParticipant(resource.data.conversationId);
+      allow create: if signedIn() && request.resource.data.senderId == uid()
+        && conversationParticipant(request.resource.data.conversationId);
     }
 
-    // ===== PRESCRIPTIONS =====
     match /prescriptions/{prescriptionId} {
-      // Patients can read their own prescriptions
-      // Doctors can read prescriptions they issued
-      // Admins can read all prescriptions
-      allow read: if isAuthenticated() && (
-        isOwner(get(/databases/$(database)/documents/prescriptions/$(prescriptionId)).data.patientId) ||
-        isOwner(get(/databases/$(database)/documents/prescriptions/$(prescriptionId)).data.doctorId) ||
-        isAdmin()
-      );
-
-      // Only doctors can create prescriptions
-      allow create: if isAuthenticated() && isDoctor();
-
-      // No updates to signed prescriptions
+      allow read: if signedIn() && (resource.data.patientId == uid() || resource.data.doctorId == uid() || isAdmin());
+      allow create: if isDoctor() && request.resource.data.doctorId == uid()
+        && request.resource.data.patientId is string && request.resource.data.patientId.size() > 0;
       allow update: if false;
-
-      // Only admins can delete prescriptions
       allow delete: if isAdmin();
     }
 
-    // ===== MEDICATION REMINDERS =====
     match /medication_reminders/{reminderId} {
-      // Patients can read their own reminders
-      allow read: if isAuthenticated() &&
-        isOwner(get(/databases/$(database)/documents/medication_reminders/$(reminderId)).data.patientId);
-
-      // Patients can create their own reminders
-      // Doctors can create reminders for their patients
-      allow create: if isAuthenticated() && (
-        isPatient() ||
-        isDoctor()
-      );
-
-      // Patients can update their own reminders (mark as taken)
-      allow update: if isAuthenticated() &&
-        isOwner(get(/databases/$(database)/documents/medication_reminders/$(reminderId)).data.patientId);
-
-      // Patients can delete their own reminders
-      allow delete: if isAuthenticated() &&
-        isOwner(get(/databases/$(database)/documents/medication_reminders/$(reminderId)).data.patientId);
+      allow read: if signedIn() && resource.data.patientId == uid();
+      allow create: if isPatient() && request.resource.data.patientId == uid();
+      allow update, delete: if signedIn() && resource.data.patientId == uid()
+        && unchanged(['patientId']);
     }
 
-    // ===== NOTIFICATIONS =====
+    match /medical_profiles/{patientId} {
+      allow read: if signedIn() && (uid() == patientId || isAdmin());
+      allow create: if isPatient() && uid() == patientId
+        && request.resource.data.patientId == uid();
+      allow update: if isPatient() && uid() == patientId
+        && unchanged(['patientId']);
+      allow delete: if false;
+    }
+
     match /notifications/{notificationId} {
-      // Users can read their own notifications
-      allow read: if isAuthenticated() &&
-        isOwner(get(/databases/$(database)/documents/notifications/$(notificationId)).data.userId);
-
-      // System creates notifications (via Cloud Functions)
-      allow create: if isAuthenticated();
-
-      // Users can mark their own notifications as read
-      allow update: if isAuthenticated() &&
-        isOwner(get(/databases/$(database)/documents/notifications/$(notificationId)).data.userId);
+      allow read, update: if signedIn() && resource.data.userId == uid();
+      allow create, delete: if isAdmin();
     }
 
-    // ===== REVIEWS =====
     match /reviews/{reviewId} {
-      // Anyone can read reviews
-      allow read: if isAuthenticated();
-
-      // Patients can create reviews
-      allow create: if isAuthenticated() && isPatient();
-
-      // Patients can update their own reviews
-      allow update: if isAuthenticated() &&
-        isOwner(get(/databases/$(database)/documents/reviews/$(reviewId)).data.patientId);
-
-      // Patients can delete their own reviews, admins can delete any
-      allow delete: if isAuthenticated() && (
-        isOwner(get(/databases/$(database)/documents/reviews/$(reviewId)).data.patientId) ||
-        isAdmin()
-      );
+      allow read: if signedIn();
+      allow create: if isPatient() && request.resource.data.patientId == uid();
+      allow update, delete: if signedIn() && resource.data.patientId == uid();
     }
 
-    // ===== SPECIALTIES =====
     match /specialties/{specialtyId} {
-      // Anyone can read specialties
-      allow read: if isAuthenticated();
-
-      // Only admins can manage specialties
-      allow create, update, delete: if isAdmin();
+      allow read: if signedIn();
+      allow write: if isAdmin();
     }
 
-    // ===== CONSULTATIONS =====
     match /consultations/{consultationId} {
-      allow read, write: if isAuthenticated();
+      allow read: if signedIn() && (resource.data.patientId == uid() || resource.data.doctorId == uid() || isAdmin());
+      allow create: if isDoctor() && request.resource.data.doctorId == uid();
+      allow update: if isDoctor() && resource.data.doctorId == uid();
     }
 
-    // ===== CONSTANTES VITALES =====
     match /constantes_vitales/{vitalsId} {
-      allow read, write: if isAuthenticated();
+      allow read: if signedIn() && (resource.data.patientId == uid() || isAdmin());
+      allow create: if signedIn() && request.resource.data.patientId == uid()
+        && request.resource.data.source in ['manual', 'certified_device'];
+      allow update, delete: if false;
     }
   }
 }

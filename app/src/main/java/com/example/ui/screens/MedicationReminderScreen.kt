@@ -23,12 +23,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.firebase.FirestoreMedicationReminder
 import com.example.data.firebase.FirestorePrescription
+import com.example.data.firebase.toDisplayDate
 import com.example.ui.theme.*
 
 @Composable
 fun MedicationReminderScreen(
     reminders: List<FirestoreMedicationReminder>,
     prescriptions: List<FirestorePrescription>,
+    onDownloadPrescription: (FirestorePrescription) -> Unit,
     onToggleTaken: (String, Boolean) -> Unit,
     onAddReminder: (String, String, String, String) -> Unit,
     onBack: () -> Unit,
@@ -256,7 +258,15 @@ fun MedicationReminderScreen(
 
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(pres.medicinesSummary, fontSize = 13.sp, color = TextDark)
-                        Text(pres.createdAt?.toDate()?.toString()?.take(10) ?: "", fontSize = 11.sp, color = TextMuted)
+                        Text(pres.createdAt?.toDisplayDate() ?: "", fontSize = 11.sp, color = TextMuted)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Button(
+                            onClick = { onDownloadPrescription(pres) },
+                            enabled = pres.pdfPath.isNotBlank(),
+                            colors = ButtonDefaults.buttonColors(containerColor = SageDeep)
+                        ) {
+                            Text(if (pres.pdfPath.isBlank()) "PDF en génération…" else "Télécharger le PDF")
+                        }
                     }
                 }
             }

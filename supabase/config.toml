@@ -1,1 +1,7 @@
 project_id = "ureopnzdiupnlhmhvdem"
+
+[functions.send-notification]
+verify_jwt = true
+
+[functions.generate-prescription-pdf]
+verify_jwt = true
