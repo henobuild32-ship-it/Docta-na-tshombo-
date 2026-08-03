@@ -3,254 +3,189 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Docta na Tshombo — Application Web & Santé</title>
-  <meta name="description" content="Docta na Tshombo : Téléconsultation, prise de rendez-vous, ordonnances, messagerie et constantes vitales en ligne." />
-  <link rel="manifest" href="manifest.webmanifest" />
-  <meta name="theme-color" content="#1B3A2B" />
+  <title>Docta na Tshombo — APK Android</title>
+  <meta name="description" content="Docta na Tshombo : Téléconsultation, prise de rendez-vous et rappels de médicaments. Application Android officielle." />
   <link rel="stylesheet" href="css/style.css" />
   <style>
-    /* Custom Web App UI Overlays & Components */
-    .app-header {
-      background: #1B3A2B;
-      color: white;
-      padding: 12px 20px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-      position: sticky;
-      top: 0;
-      z-index: 100;
-    }
-    .app-brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 1.1rem; color: white; text-decoration: none; }
-    .app-brand img { width: 34px; height: 34px; border-radius: 8px; }
-    .app-layout { display: flex; min-height: calc(100vh - 60px); background: #F4F7F5; }
-    .app-sidebar { width: 260px; background: white; border-right: 1px solid #E2E8F0; padding: 20px 10px; display: flex; flex-direction: column; gap: 6px; }
-    @media (max-width: 768px) {
-      .app-layout { flex-direction: column; }
-      .app-sidebar { width: 100%; border-right: none; border-bottom: 1px solid #E2E8F0; padding: 10px; flex-direction: row; overflow-x: auto; }
-      .app-sidebar .nav-item { white-space: nowrap; padding: 8px 12px; font-size: 0.85rem; }
-    }
-    .nav-item {
-      display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 12px; color: #4A5568; font-weight: 600; text-decoration: none; cursor: pointer; transition: all 0.2s ease; border: none; background: transparent; width: 100%; text-align: left;
-    }
-    .nav-item:hover, .nav-item.active { background: #EAF1EC; color: #2C4531; }
-    .app-content { flex: 1; padding: 24px; max-width: 1200px; margin: 0 auto; width: 100%; }
-    .stat-card { background: white; padding: 20px; border-radius: 16px; box-shadow: 0 4px 14px rgba(0,0,0,0.03); border: 1px solid #EDF2F7; }
-    .stat-val { font-size: 1.8rem; font-weight: 800; color: #2C4531; margin-top: 4px; }
-    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px; }
-    .presence-switch { display: inline-flex; align-items: center; gap: 8px; background: #EAF1EC; padding: 6px 14px; border-radius: 999px; cursor: pointer; font-weight: 600; }
-    .pulse-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
-    .pulse-dot.online { background: #38A169; box-shadow: 0 0 8px #38A169; }
-    .pulse-dot.offline { background: #E53E3E; }
-    .pulse-dot.busy { background: #DD6B20; }
-    .ppg-canvas { width: 100%; height: 120px; background: #1A202C; border-radius: 12px; margin: 12px 0; }
-    .chat-box { background: white; border-radius: 16px; border: 1px solid #E2E8F0; display: flex; flex-direction: column; height: 400px; }
-    .chat-messages { flex: 1; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
-    .chat-bubble { max-width: 75%; padding: 12px 16px; border-radius: 16px; font-size: 0.95rem; line-height: 1.4; }
-    .chat-bubble.mine { align-self: flex-end; background: #2C4531; color: white; border-bottom-right-radius: 4px; }
-    .chat-bubble.other { align-self: flex-start; background: #EDF2F7; color: #2D3748; border-bottom-left-radius: 4px; }
-    .app-tab { display: none; }
-    .app-tab.active { display: block; }
-    .showcase-banner {
+    /* Custom Android-Only Download Page */
+    .download-page {
+      min-height: 100vh;
       background: linear-gradient(135deg, #1B3A2B, #2C4531);
       color: white;
-      padding: 40px 32px;
-      border-radius: 20px;
-      margin-bottom: 28px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
       text-align: center;
     }
-    .showcase-banner h2 { font-size: 24px; margin-bottom: 10px; }
-    .showcase-banner p { opacity: 0.85; font-size: 15px; line-height: 1.7; }
-    .showcase-banner .btn { margin-top: 18px; }
-    .feature-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
-    .feature-item { background: white; border-radius: 14px; padding: 20px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
-    .feature-item .icon { font-size: 32px; margin-bottom: 8px; }
-    .feature-item h4 { font-size: 14px; color: #2C4531; margin-bottom: 4px; }
-    .feature-item p { font-size: 13px; color: #5A6B60; }
-    .download-section { background: #F4F9F5; border-radius: 20px; padding: 32px; text-align: center; margin-top: 28px; }
-    .download-section h3 { color: #2C4531; margin-bottom: 12px; }
-    .download-section .btn { margin: 6px; }
+
+    .download-container {
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 24px;
+      padding: 48px 40px;
+      max-width: 500px;
+      width: 100%;
+      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.4);
+    }
+
+    .logo {
+      width: 120px;
+      height: 120px;
+      margin: 0 auto 24px;
+      border-radius: 20px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    }
+
+    .title {
+      font-size: 32px;
+      font-weight: 800;
+      color: #1B3A2B;
+      margin-bottom: 12px;
+      letter-spacing: -0.5px;
+    }
+
+    .subtitle {
+      font-size: 16px;
+      color: #5A6B60;
+      margin-bottom: 32px;
+      line-height: 1.6;
+    }
+
+    .apk-info {
+      background: #F4F9F5;
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 32px;
+      border-left: 4px solid #1B3A2B;
+    }
+
+    .apk-info h3 {
+      color: #1B3A2B;
+      font-size: 18px;
+      margin-bottom: 12px;
+    }
+
+    .apk-info ul {
+      list-style: none;
+      padding: 0;
+      text-align: left;
+    }
+
+    .apk-info li {
+      padding: 6px 0;
+      color: #4A5568;
+      font-size: 14px;
+    }
+
+    .apk-info li::before {
+      content: "✓";
+      color: #1B3A2B;
+      font-weight: 700;
+      margin-right: 8px;
+    }
+
+    .btn-android {
+      background: linear-gradient(135deg, #1B3A2B, #2C4531);
+      color: white;
+      font-size: 18px;
+      font-weight: 700;
+      padding: 20px 32px;
+      border-radius: 16px;
+      border: none;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 10px 30px rgba(27, 58, 43, 0.3);
+      margin-bottom: 20px;
+      width: 100%;
+    }
+
+    .btn-android:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 15px 40px rgba(27, 58, 43, 0.4);
+    }
+
+    .btn-android:active {
+      transform: translateY(0);
+    }
+
+    .download-feedback {
+      margin-top: 16px;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .download-feedback.active {
+      opacity: 1;
+    }
+
+    .link-back {
+      display: inline-block;
+      margin-top: 24px;
+      color: #1B3A2B;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 14px;
+      transition: color 0.2s;
+    }
+
+    .link-back:hover {
+      color: #2C4531;
+      text-decoration: underline;
+    }
+
+    @media (max-width: 480px) {
+      .download-container {
+        padding: 32px 24px;
+      }
+
+      .title {
+        font-size: 28px;
+      }
+
+      .logo {
+        width: 100px;
+        height: 100px;
+      }
+    }
   </style>
 </head>
 <body>
+  <div class="download-page">
+    <div class="download-container">
+      <img src="assets/app-icon.jpg" alt="Logo Docta na Tshombo" class="logo" />
+      
+      <h1 class="title">Docta na Tshombo</h1>
+      
+      <p class="subtitle">
+        Application officielle Android pour la téléconsultation médicale, la prise de rendez-vous et les rappels de médicaments en RDC.
+      </p>
 
-  <!-- Top Header Navigation -->
-  <header class="app-header">
-    <a href="index.html" class="app-brand">
-      <img src="assets/app-icon.jpg" alt="Logo" />
-      <span>Docta na Tshombo <small style="opacity:0.8; font-weight:400;">v1.4</small></span>
-    </a>
+      <div class="apk-info">
+        <h3>Informations APK :</h3>
+        <ul>
+          <li>Version officielle v1.4</li>
+          <li>Téléchargement direct</li>
+          <li>Compatible Android 7.0 et plus</li>
+          <li>Taille : 24 Mo</li>
+          <li>Signature : Sécurisée</li>
+        </ul>
+      </div>
 
-    <div style="display:flex; align-items:center; gap:10px;">
-      <a href="index.html" class="btn btn-ghost btn-sm" style="color:white; padding:6px 14px; font-size:0.85rem; border-color:rgba(255,255,255,0.3);">
-        🏠 Site Vitrine
-      </a>
-      <button id="apk-btn" class="btn btn-secondary btn-sm" style="color:white; padding:6px 14px; font-size:0.85rem;">
-        📲 Télécharger APK
+      <button class="btn-android" data-apk-download>
+        📲 Télécharger l'APK Android
       </button>
+      
+      <div class="download-feedback" id="download-feedback" aria-live="polite"></div>
+
+      <a href="index.html" class="link-back">🏠 Retour au site vitrine</a>
     </div>
-  </header>
-
-  <!-- Main App Layout -->
-  <div class="app-layout">
-
-    <!-- Sidebar Navigation -->
-    <aside class="app-sidebar">
-      <div style="display:flex; flex-direction:column; gap:6px; width:100%;">
-        <button class="nav-item active" onclick="switchTab('showcase')">🏠 Accueil</button>
-        <button class="nav-item" onclick="switchTab('showcase-features')">✨ Fonctionnalités</button>
-        <button class="nav-item" onclick="switchTab('showcase-tele')">🎥 Téléconsultation</button>
-        <button class="nav-item" onclick="switchTab('showcase-download')">📥 Télécharger</button>
-        <button class="nav-item" onclick="switchTab('showcase-about')">ℹ️ À propos</button>
-      </div>
-    </aside>
-
-    <!-- Main Content Area -->
-    <main class="app-content">
-
-      <!-- ============ SHOWCASE HOME ============ -->
-      <div id="tab-showcase" class="app-tab active">
-        <div class="showcase-banner">
-          <h2>🏥 Docta na Tshombo</h2>
-          <p>Consultez un médecin depuis votre téléphone ou navigateur.<br />Téléconsultation, rendez-vous, ordonnances et rappels — le tout en une seule application.</p>
-          <a href="app.html#showcase-download" class="btn btn-primary btn-lg">📲 Télécharger l'APK Android</a>
-          <a href="app.html#showcase-tele" class="btn btn-ghost btn-lg" style="color:white; border-color:rgba(255,255,255,0.4);">🌐 Essayer la Web App</a>
-        </div>
-
-        <div class="feature-row">
-          <div class="feature-item">
-            <div class="icon">🎥</div>
-            <h4>Téléconsultation</h4>
-            <p>Visio sécurisée avec Jitsi WebRTC</p>
-          </div>
-          <div class="feature-item">
-            <div class="icon">📅</div>
-            <h4>Rendez-vous</h4>
-            <p>Prise de RDV en ligne simple</p>
-          </div>
-          <div class="feature-item">
-            <div class="icon">💬</div>
-            <h4>Messagerie</h4>
-            <p>Chat sécurisé patient-praticien</p>
-          </div>
-          <div class="feature-item">
-            <div class="icon">💊</div>
-            <h4>Rappels</h4>
-            <p>Notifications de médicaments</p>
-          </div>
-          <div class="feature-item">
-            <div class="icon">📄</div>
-            <h4>Ordonnances</h4>
-            <p>PDF signé et téléchargeable</p>
-          </div>
-          <div class="feature-item">
-            <div class="icon">👨‍⚕️</div>
-            <h4>Espace praticien</h4>
-            <p>Gestion cabinet & patients</p>
-          </div>
-        </div>
-
-        <div class="download-section">
-          <h3>📲 Télécharger Docta na Tshombo</h3>
-          <p style="color:var(--text-muted); margin-bottom:16px;">Choisissez votre plateforme.</p>
-          <button type="button" class="btn btn-primary btn-lg" data-apk-download>Télécharger l'APK Android</button>
-          <a href="index.html" class="btn btn-ghost btn-lg">Retour au site vitrine</a>
-          <p style="margin-top:16px; font-size:13px; color:var(--text-muted);">APK signée • v1.4 • 24 Mo • Android 7.0+</p>
-        </div>
-      </div>
-
-      <!-- ============ FEATURES ============ -->
-      <div id="tab-showcase-features" class="app-tab">
-        <h2 style="margin-bottom:20px; color:var(--sage-deep);">✨ Fonctionnalités</h2>
-        <div class="feature-row">
-          <div class="feature-item">
-            <div class="icon">🎥</div>
-            <h4>Téléconsultation Vidéo</h4>
-            <p>Rejoignez votre médecin en visio en un clic via Jitsi WebRTC</p>
-          </div>
-          <div class="feature-item">
-            <div class="icon">📅</div>
-            <h4>Prise de Rendez-vous</h4>
-            <p>Choisissez votre médecin, le motif et l'heure. Confirmation immédiate.</p>
-          </div>
-          <div class="feature-item">
-            <div class="icon">💬</div>
-            <h4>Messagerie Sécurisée</h4>
-            <p>Échangez avec votre praticien directement dans l'application</p>
-          </div>
-          <div class="feature-item">
-            <div class="icon">💊</div>
-            <h4>Rappels Médicaments</h4>
-            <p>Des notifications pour ne plus jamais oublier un traitement</p>
-          </div>
-          <div class="feature-item">
-            <div class="icon">📄</div>
-            <h4>Ordonnances Numériques</h4>
-            <p>Ordonnances consultables, partageables et téléchargeables en PDF</p>
-          </div>
-          <div class="feature-item">
-            <div class="icon">👨‍⚕️</div>
-            <h4>Espace Praticien</h4>
-            <p>Plages horaires, consultations et patients gérés depuis l'app</p>
-          </div>
-        </div>
-      </div>
-
-      <!-- ============ TELECONSULTATION ============ -->
-      <div id="tab-showcase-tele" class="app-tab">
-        <h2 style="margin-bottom:20px; color:var(--sage-deep);">🎥 Téléconsultation en Direct</h2>
-        <div class="stat-card" style="max-width:700px; margin:0 auto; text-align:center;">
-          <p style="color:var(--text-muted); margin-bottom:20px;">La téléconsultation est rapide, simple et sécurisée. Rejoignez votre médecin en visio depuis chez vous.</p>
-          <ul style="text-align:left; max-width:400px; margin:0 auto 20px; line-height:2; color:var(--text-dark);">
-            <li>✅ Connexion vidéo en un clic via Jitsi WebRTC</li>
-            <li>✅ Médecins vérifiés et disponibles</li>
-            <li>✅ Ordonnance numérique délivrée à la fin</li>
-            <li>✅ Compatible mobile et ordinateur</li>
-            <li>✅ Aucune installation requise (Web)</li>
-          </ul>
-          <a href="app.html" class="btn btn-primary btn-lg">Lancer la Web App</a>
-        </div>
-      </div>
-
-      <!-- ============ DOWNLOAD ============ -->
-      <div id="tab-showcase-download" class="app-tab">
-        <h2 style="margin-bottom:20px; color:var(--sage-deep);">📥 Télécharger Docta na Tshombo</h2>
-        <div class="download-section">
-          <h3>Application Android APK</h3>
-          <p style="color:var(--text-muted); margin-bottom:16px;">Version officielle signée, compatible Android 7.0 et plus.</p>
-          <button type="button" class="btn btn-primary btn-lg" data-apk-download>Télécharger l'APK Android</button>
-          <p style="margin-top:12px; font-size:13px; color:var(--text-muted);">APK signée • v1.4 • 24 Mo</p>
-        </div>
-        <div class="download-section" style="background:var(--sage-light);">
-          <h3>🌐 Application Web (PWA)</h3>
-          <p style="color:var(--text-muted); margin-bottom:16px;">Utilisez l'application directement dans votre navigateur, sans installation.</p>
-          <a href="app.html" class="btn btn-primary btn-lg">Lancer l'application Web</a>
-          <p style="margin-top:12px; font-size:13px; color:var(--text-muted);">PWA • Fonctionne hors ligne • S'installe sur l'écran d'accueil</p>
-        </div>
-      </div>
-
-      <!-- ============ ABOUT ============ -->
-      <div id="tab-showcase-about" class="app-tab">
-        <h2 style="margin-bottom:20px; color:var(--sage-deep);">ℹ️ À propos de Docta na Tshombo</h2>
-        <div class="stat-card" style="max-width:700px; margin:0 auto;">
-          <h3>Notre mission</h3>
-          <p style="color:var(--text-muted); line-height:1.8;">Docta na Tshombo est une application de santé conçue et développée pour la République Démocratique du Congo. Elle permet aux patients de consulter des médecins vérifiés en téléconsultation ou en présentiel, de prendre des rendez-vous, de recevoir des ordonnances numériques et de gérer leurs rappels de médicaments.</p>
-
-          <h3 style="margin-top:20px;">Contact</h3>
-          <p style="font-size:1.1rem; font-weight:600; color:var(--sage-deep);">📧 <a href="mailto:henockaduma2@gmail.com" style="color:var(--sage-deep); text-decoration:underline;">henockaduma2@gmail.com</a></p>
-
-          <h3 style="margin-top:20px;">Version</h3>
-          <p style="color:var(--text-muted);">v1.4 — Web App & Android APK</p>
-
-          <h3 style="margin-top:20px;">Lien du site vitrine</h3>
-          <p><a href="index.html" class="btn btn-primary btn-sm">Retour au site vitrine</a></p>
-        </div>
-      </div>
-
-    </main>
   </div>
 
-  <script src="js/app.js"></script>
+  <script src="js/main.js"></script>
 </body>
 </html>
