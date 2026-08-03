@@ -3,158 +3,101 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Docta na Tshombo — APK Android</title>
-  <meta name="description" content="Docta na Tshombo : Téléconsultation, prise de rendez-vous et rappels de médicaments. Application Android officielle." />
+  <title>Docta na Tshombo - Application Android Officielle</title>
+  <meta name="description" content="Docta na Tshombo : Application médicale officielle pour la téléconsultation, prise de rendez-vous et rappels de médicaments en RDC." />
   <link rel="stylesheet" href="css/style.css" />
   <style>
-    /* Custom Android-Only Download Page */
-    .download-page {
-      min-height: 100vh;
-      background: linear-gradient(135deg, #1B3A2B, #2C4531);
-      color: white;
+    /* Clean, professional Android download page */
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #f8fafc;
+      color: #1f2937;
+      margin: 0;
+      padding: 0;
       display: flex;
-      flex-direction: column;
-      align-items: center;
       justify-content: center;
-      padding: 40px 20px;
+      align-items: center;
+      min-height: 100vh;
+    }
+    
+    .container {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+      padding: 40px;
       text-align: center;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .download-page::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: radial-gradient(circle at top right, rgba(44, 69, 49, 0.1), transparent 70%);
-      z-index: -1;
-    }
-
-    .download-container {
-      background: rgba(255, 255, 255, 0.95);
-      border-radius: 24px;
-      padding: 48px 40px;
       max-width: 500px;
       width: 100%;
-      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.4);
-      position: relative;
-      z-index: 1;
     }
-
+    
     .logo {
-      width: 120px;
+      width: 100px;
       height: 120px;
-      margin: 0 auto 24px;
-      border-radius: 20px;
-      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-      animation: pulse 2s infinite;
+      margin: 0 auto 20px;
+      border-radius: 12px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
     }
-
-    @keyframes pulse {
-      0% { box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2); }
-      50% { box-shadow: 0 15px 50px rgba(0, 0, 0, 0.3); }
-      100% { box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2); }
-    }
-
+    
     .title {
-      font-size: 32px;
-      font-weight: 800;
-      color: #1B3A2B;
-      margin-bottom: 12px;
-      letter-spacing: -0.5px;
-      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      font-size: 28px;
+      font-weight: 700;
+      color: #1f2937;
+      margin-bottom: 16px;
     }
-
+    
     .subtitle {
       font-size: 16px;
-      color: #5A6B60;
-      margin-bottom: 32px;
-      line-height: 1.6;
-      font-weight: 500;
+      color: #4b5563;
+      margin-bottom: 24px;
     }
-
+    
     .apk-info {
-      background: #F4F9F5;
-      border-radius: 16px;
+      background: #f0fdf4;
+      border-left: 4px solid #10b981;
+      border-radius: 8px;
       padding: 20px;
-      margin-bottom: 32px;
-      border-left: 4px solid #1B3A2B;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+      margin-bottom: 24px;
     }
-
+    
     .apk-info h3 {
-      color: #1B3A2B;
+      color: #1f2937;
       font-size: 18px;
       margin-bottom: 12px;
       font-weight: 600;
     }
-
+    
     .apk-info ul {
       list-style: none;
       padding: 0;
-      text-align: left;
     }
-
+    
     .apk-info li {
       padding: 6px 0;
-      color: #4A5568;
+      color: #4b5563;
       font-size: 14px;
-      line-height: 1.6;
     }
-
-    .apk-info li::before {
-      content: "✓";
-      color: #1B3A2B;
-      font-weight: 700;
-      margin-right: 8px;
-    }
-
+    
     .btn-android {
-      background: linear-gradient(135deg, #1B3A2B, #2C4531);
+      background: linear-gradient(135deg, #10b981, #17896d);
       color: white;
       font-size: 18px;
       font-weight: 700;
-      padding: 20px 32px;
-      border-radius: 16px;
+      padding: 16px 32px;
+      border-radius: 12px;
       border: none;
       cursor: pointer;
-      transition: all 0.4s ease;
-      box-shadow: 0 10px 30px rgba(27, 58, 43, 0.3);
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+      transition: all 0.3s ease;
+      width: 100%;
       margin-bottom: 20px;
-      width: 100%;
-      position: relative;
-      overflow: hidden;
     }
-
-    .btn-android::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-      transform: translateX(-100%);
-      transition: transform 0.5s ease;
-    }
-
-    .btn-android:hover::before {
-      transform: translateX(100%);
-    }
-
+    
     .btn-android:hover {
       transform: translateY(-2px);
-      box-shadow: 0 15px 40px rgba(27, 58, 43, 0.4);
-      background: linear-gradient(135deg, #2C4531, #1B3A2B);
+      box-shadow: 0 8px 20px rgba(16, 185, 129, 0.4);
+      background: linear-gradient(135deg, #17896d, #10b981);
     }
-
-    .btn-android:active {
-      transform: translateY(0);
-    }
-
+    
     .download-feedback {
       margin-top: 16px;
       padding: 12px;
@@ -163,77 +106,69 @@
       font-weight: 600;
       opacity: 0;
       transition: opacity 0.3s ease;
-      background: #1B3A2B;
+      background: #10b981;
       color: white;
-      border: 1px solid rgba(27, 58, 43, 0.2);
+      border: 1px solid rgba(16, 185, 129, 0.2);
     }
-
+    
     .download-feedback.active {
       opacity: 1;
     }
-
+    
     .link-back {
       display: inline-block;
       margin-top: 24px;
-      color: #1B3A2B;
+      color: #1f2937;
       text-decoration: none;
       font-weight: 600;
       font-size: 14px;
       transition: color 0.2s;
     }
-
+    
     .link-back:hover {
-      color: #2C4531;
+      color: #10b981;
       text-decoration: underline;
     }
-
+    
     @media (max-width: 480px) {
-      .download-container {
-        padding: 32px 24px;
+      .container {
+        padding: 20px;
       }
-
       .title {
-        font-size: 28px;
-      }
-
-      .logo {
-        width: 100px;
-        height: 100px;
+        font-size: 26px;
       }
     }
   </style>
 </head>
 <body>
 
-  <div class="download-page">
-    <div class="download-container">
-      <img src="assets/app-icon.jpg" alt="Logo Docta na Tshombo" class="logo" />
-      
-      <h1 class="title">Docta na Tshombo</h1>
-      
-      <p class="subtitle">
-        Application officielle Android pour la téléconsultation médicale, la prise de rendez-vous et les rappels de médicaments en RDC.
-      </p>
-
-      <div class="apk-info">
-        <h3>Informations APK :</h3>
-        <ul>
-          <li>Version officielle v1.4</li>
-          <li>Téléchargement direct</li>
-          <li>Compatible Android 7.0 et plus</li>
-          <li>Taille : 24 Mo</li>
-          <li>Signature : Sécurisée</li>
-        </ul>
-      </div>
-
-      <button class="btn-android" data-apk-download>
-        📲 Télécharger l'APK Android
-      </button>
-      
-      <div class="download-feedback" id="download-feedback" aria-live="polite"></div>
-
-      <a href="index.html" class="link-back">🏠 Retour au site vitrine</a>
+  <div class="container">
+    <img src="assets/app-icon.jpg" alt="Docta na Tshombo Logo" class="logo" />
+    
+    <h1 class="title">Docta na Tshombo</h1>
+    
+    <p class="subtitle">
+      Application médicale officielle pour la téléconsultation, prise de rendez-vous et rappels de médicaments en RDC.
+    </p>
+    
+    <div class="apk-info">
+      <h3>Informations APK :</h3>
+      <ul>
+        <li>Version officielle v1.4</li>
+        <li>Téléchargement direct</li>
+        <li>Compatible Android 7.0 et plus</li>
+        <li>Taille : 24 Mo</li>
+        <li>Signature : Sécurisée</li>
+      </ul>
     </div>
+    
+    <button class="btn-android" data-apk-download>
+      📲 Télécharger l'APK Android
+    </button>
+    
+    <div class="download-feedback" id="download-feedback" aria-live="polite"></div>
+    
+    <a href="index.html" class="link-back">🏠 Retour au site vitrine</a>
   </div>
 
   <script src="js/main.js"></script>
