@@ -1,6 +1,8 @@
 package com.example.data.firebase
 
 import com.example.data.supabase.SupabaseClientProvider
+import io.github.jan.supabase.auth.exception.AuthErrorCode
+import io.github.jan.supabase.auth.exception.AuthRestException
 import io.github.jan.supabase.auth.status.SessionStatus
 import io.github.jan.supabase.auth.providers.builtin.Email
 import io.github.jan.supabase.auth.user.UserInfo
@@ -31,6 +33,9 @@ class AuthRepository(
             Result.failure(e)
         }
     }
+
+    /** Émet l'état brut de la session (inclut Initializing pour l'écran de chargement). */
+    fun sessionStatusFlow(): Flow<SessionStatus> = auth.sessionStatus
 
     /** Émet l'id de l'utilisateur connecté (ou null quand déconnecté). */
     fun authStateFlow(): Flow<String?> = auth.sessionStatus
@@ -64,10 +69,10 @@ class AuthRepository(
                     put("phone", phone)
                     put("role", role)
                 }
-            } ?: throw Exception("Échec de la création du compte")
+            } ?: throw AuthException("Sign up failed")
             Result.success(user)
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(e.toFriendlyAuthError())
         }
     }
 
@@ -79,27 +84,53 @@ class AuthRepository(
                 this.email = emailValue
                 this.password = passwordValue
             }
-            val user = auth.currentUserOrNull() ?: throw Exception("Sign in failed")
+            val user = auth.currentUserOrNull() ?: throw AuthException("Sign in failed")
             Result.success(user)
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(e.toFriendlyAuthError())
         }
     }
+
+    /**
+     * Convertit une exception Supabase en une erreur utilisateur propre en
+     * français, sans jamais exposer l'URL du projet, les clés, un stack trace
+     * ni le code technique brut (ex. `email_not_confirmed`).
+     */
+    private fun Exception.toFriendlyAuthError(): Exception =
+        AuthException(friendlyAuthMessage(this))
+
+    private fun friendlyAuthMessage(error: Exception): String {
+        if (error is AuthRestException) {
+            when (error.errorCode) {
+                AuthErrorCode.InvalidCredentials,
+                AuthErrorCode.UserNotFound,
+                AuthErrorCode.BadJson,
+                AuthErrorCode.BadJwt -> return "Identifiants incorrects. Vérifiez votre email et votre mot de passe."
+                AuthErrorCode.EmailNotConfirmed,
+                AuthErrorCode.PhoneNotConfirmed -> return "Ce compte n'est pas encore activé. Vérifiez votre email de confirmation, puis réessayez."
+                AuthErrorCode.EmailExists,
+                AuthErrorCode.UserAlreadyExists -> return "Un compte existe déjà avec cet email."
+                AuthErrorCode.WeakPassword -> return "Le mot de passe est trop faible. Utilisez au moins 8 caractères."
+                AuthErrorCode.OverRequestRateLimit,
+                AuthErrorCode.OverEmailSendRateLimit,
+                AuthErrorCode.OverSmsSendRateLimit -> return "Trop de tentatives. Veuillez réessayer dans quelques minutes."
+                AuthErrorCode.SignupDisabled,
+                AuthErrorCode.EmailProviderDisabled -> return "La création de compte est temporairement indisponible."
+                AuthErrorCode.UserBanned -> return "Ce compte a été suspendu."
+                else -> return "Échec de la connexion. Veuillez réessayer."
+            }
+        }
+        return "Connexion impossible. Vérifiez votre connexion internet et réessayez."
+    }
+
+    /** Exception interne à l'app, ne contenant jamais de détails techniques. */
+    class AuthException(message: String) : Exception(message)
 
     suspend fun signOut() {
         try {
             auth.signOut()
         } catch (_: Exception) {
             auth.signOut(io.github.jan.supabase.auth.SignOutScope.LOCAL)
-        }
-    }
-
-    suspend fun resetPassword(email: String): Result<Unit> {
-        return try {
-            auth.resetPasswordForEmail(email)
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Result.failure(e)
         }
     }
 
@@ -161,6 +192,7 @@ class AuthRepository(
         "isVerified" -> "is_verified"
         "isActive" -> "is_active"
         "isSeniorMode" -> "is_senior_mode"
+        "presentationSeen" -> "presentation_seen"
         "onesignalSubscriptionId" -> "onesignal_subscription_id"
         "rppsNumber" -> "rpps_number"
         else -> key

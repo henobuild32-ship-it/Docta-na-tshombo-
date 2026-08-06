@@ -82,13 +82,16 @@ data class PatientRecord(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PractitionerHomeScreen(
-    doctorName: String = "Dr. Amina Kalala",
+    doctorName: String = "",
     profileImageUri: String? = null,
+    specialty: String = "",
+    rppsNumber: String = "",
     onUpdatePhoto: (String) -> Unit = {},
     isPractitionerPresent: Boolean,
     onTogglePresence: () -> Unit,
     appointments: List<FirestoreAppointment>,
     onStartConsultationForPatient: (FirestoreAppointment) -> Unit,
+    onMessagePatient: (FirestoreAppointment) -> Unit,
     onNavigateToMessaging: () -> Unit,
     onUpdateAppointment: (String, String, String) -> Unit,
     onUpdateAppointmentStatus: (String, String) -> Unit,
@@ -96,6 +99,8 @@ fun PractitionerHomeScreen(
     onCreateAppointment: (String, String, String, String, String, String) -> Unit,
     onIssuePrescription: (String, String, String, String, String, String) -> Unit,
     isSeniorMode: Boolean = false,
+    onOpenPresentation: () -> Unit = {},
+    onOpenSettings: () -> Unit = {},
     onLogout: () -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -323,6 +328,7 @@ fun PractitionerHomeScreen(
                 PractitionerTab.ACCUEIL -> DashboardTabContent(
                     appointments = appointments,
                     onStartConsultation = onStartConsultationForPatient,
+                    onMessagePatient = onMessagePatient,
                     onNavigateToTab = { activeTab = it }
                 )
 
@@ -352,8 +358,12 @@ fun PractitionerHomeScreen(
                 PractitionerTab.PROFIL -> ProfileTabContent(
                     doctorName = doctorName,
                     profileImageUri = profileImageUri,
+                    specialty = specialty,
+                    rppsNumber = rppsNumber,
                     onUpdatePhoto = onUpdatePhoto,
                     onOpenDocumentScanner = { showDocumentScannerModal = true },
+                    onOpenPresentation = onOpenPresentation,
+                    onOpenSettings = onOpenSettings,
                     onLogout = { showLogoutConfirmDialog = true }
                 )
             }
@@ -371,17 +381,7 @@ fun PractitionerHomeScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Surface(color = WaterGreen.copy(alpha = 0.2f), shape = RoundedCornerShape(10.dp)) {
                         Row(modifier = Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Text("📅 Nouveau RDV confirmé : Jean Mukendi (Demain à 10:00)", fontSize = 13.sp)
-                        }
-                    }
-                    Surface(color = TerracottaLight, shape = RoundedCornerShape(10.dp)) {
-                        Row(modifier = Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Text("💬 Nouveau message de Marie Tshilombo", fontSize = 13.sp)
-                        }
-                    }
-                    Surface(color = SageLight, shape = RoundedCornerShape(10.dp)) {
-                        Row(modifier = Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Text("📹 Demande de téléconsultation imminente", fontSize = 13.sp)
+                            Text("Aucune nouvelle notification pour le moment.", fontSize = 13.sp)
                         }
                     }
                 }
@@ -397,7 +397,7 @@ fun PractitionerHomeScreen(
     // 2. Add Consultation Dialog
     if (showAddConsultationDialog) {
         var patientName by remember { mutableStateOf("") }
-        var dateStr by remember { mutableStateOf("02/08/2026") }
+        var dateStr by remember { mutableStateOf(java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.FRENCH).format(java.util.Date())) }
         var timeStr by remember { mutableStateOf("10:00") }
         var apptType by remember { mutableStateOf("Téléconsultation") }
         var motifStr by remember { mutableStateOf("") }
@@ -628,10 +628,9 @@ fun PractitionerHomeScreen(
                     ) {
                         Column(modifier = Modifier.padding(14.dp)) {
                             Text(doctorName, fontWeight = FontWeight.Bold, color = SageDeep)
-                            Text("RPPS : CNOM-2026-9812 • henockaduma2@gmail.com", fontSize = 11.sp, color = TextMuted)
                             Divider(modifier = Modifier.padding(vertical = 8.dp))
                             Text("PRESCRIPTION MÉDICALE", fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                            Text("• Paracétamol 1g (3x/jour, 5 jours)", fontSize = 12.sp)
+                            Text("• Ordonnance signée électroniquement", fontSize = 12.sp)
                             Spacer(modifier = Modifier.height(10.dp))
                             Text("📜 Cachet et Signature Certifiés", fontSize = 11.sp, color = SageDeep, fontWeight = FontWeight.Bold)
                         }
@@ -733,6 +732,7 @@ fun PractitionerHomeScreen(
 fun DashboardTabContent(
     appointments: List<FirestoreAppointment>,
     onStartConsultation: (FirestoreAppointment) -> Unit,
+    onMessagePatient: (FirestoreAppointment) -> Unit,
     onNavigateToTab: (PractitionerTab) -> Unit
 ) {
     Column(
@@ -806,12 +806,17 @@ fun DashboardTabContent(
                             Text(appt.patientName, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                             Text("📅 ${appt.time} • ${appt.motif}", fontSize = 12.sp, color = TextMuted)
                         }
-                        Button(
-                            onClick = { onStartConsultation(appt) },
-                            colors = ButtonDefaults.buttonColors(containerColor = SageDeep),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
-                        ) {
-                            Text("Ouvrir", fontSize = 12.sp)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            IconButton(onClick = { onMessagePatient(appt) }) {
+                                Icon(Icons.Outlined.ChatBubbleOutline, contentDescription = "Envoyer un message", tint = SageDeep)
+                            }
+                            Button(
+                                onClick = { onStartConsultation(appt) },
+                                colors = ButtonDefaults.buttonColors(containerColor = SageDeep),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                            ) {
+                                Text("Ouvrir", fontSize = 12.sp)
+                            }
                         }
                     }
                 }
@@ -974,21 +979,29 @@ fun MessagesTabContent(
         Text("💬 Messagerie Patients", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
 
         GlassCard(
-            modifier = Modifier.fillMaxWidth().clickable { onOpenMessaging() },
+            modifier = Modifier.fillMaxWidth(),
             backgroundColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
             borderColor = GlassBorderLight
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                Column {
-                    Text("Jean Mukendi", fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                    Text("Bonjour Docteur, la fièvre a baissé...", fontSize = 12.sp, color = TextMuted)
-                }
-                Surface(shape = CircleShape, color = Terracotta) {
-                    Text("1", color = Color.White, fontSize = 10.sp, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp), fontWeight = FontWeight.Bold)
+                Text("Aucune conversation en cours.", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                Text(
+                    "Les conversations avec vos patients apparaîtront ici après leur premier échange.",
+                    fontSize = 12.sp,
+                    color = TextMuted
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Button(
+                    onClick = onOpenMessaging,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = SageDeep)
+                ) {
+                    Text("Ouvrir la messagerie", fontSize = 13.sp)
                 }
             }
         }
@@ -999,8 +1012,12 @@ fun MessagesTabContent(
 fun ProfileTabContent(
     doctorName: String,
     profileImageUri: String?,
+    specialty: String,
+    rppsNumber: String,
     onUpdatePhoto: (String) -> Unit,
     onOpenDocumentScanner: () -> Unit,
+    onOpenPresentation: () -> Unit,
+    onOpenSettings: () -> Unit,
     onLogout: () -> Unit
 ) {
     Column(
@@ -1018,10 +1035,9 @@ fun ProfileTabContent(
             borderColor = GlassBorderLight
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Doctorat & Spécialité : Cardiologie", fontWeight = FontWeight.SemiBold)
-                Text("Hôpital / Cabinet : Hôpital du Cinquantenaire, Kinshasa")
-                Text("N° Ordre / RPPS : CNOM-2026-9812")
-                Text("Contact Support : henockaduma2@gmail.com", color = SageDeep, fontWeight = FontWeight.Bold)
+                Text("Docteur : $doctorName", fontWeight = FontWeight.SemiBold)
+                Text("Spécialité : ${specialty.ifBlank { "Non renseignée" }}")
+                Text("N° Ordre / RPPS : ${rppsNumber.ifBlank { "Non renseigné" }}")
             }
         }
 
@@ -1031,6 +1047,26 @@ fun ProfileTabContent(
             colors = ButtonDefaults.buttonColors(containerColor = SageDeep)
         ) {
             Text("🔍 Scanner Automatique des Documents (15s)")
+        }
+
+        Button(
+            onClick = onOpenPresentation,
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(containerColor = SageMedium)
+        ) {
+            Icon(Icons.Outlined.Info, contentDescription = null)
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("📖 Présentation de l'application")
+        }
+
+        Button(
+            onClick = onOpenSettings,
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(containerColor = SageMedium)
+        ) {
+            Icon(Icons.Outlined.Settings, contentDescription = null)
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("⚙️ Paramètres & mot de passe")
         }
 
         Button(

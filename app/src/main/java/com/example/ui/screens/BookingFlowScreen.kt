@@ -50,19 +50,31 @@ fun BookingFlowScreen(
     )
     var selectedMotif by remember { mutableStateOf(motifs.first().first) }
 
-    // Days timeline
-    val days = listOf(
-        "Jeu 30" to true,
-        "Ven 31" to true,
-        "Sam 01" to false,
-        "Dim 02" to false,
-        "Lun 03" to true,
-        "Mar 04" to true
-    )
-    var selectedDay by remember { mutableStateOf("Jeu 30") }
+    // Créneaux réels du praticien (available_slots), ex: "2026-08-05 09:00"
+    val groupedSlots = remember(practitioner.availableSlots) {
+        practitioner.availableSlots
+            .sorted()
+            .groupBy { it.take(10) }
+            .map { (date, slots) -> date to slots.map { it.drop(11) } }
+    }
+    val dayLabels = remember(groupedSlots) {
+        val parser = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.FRENCH)
+        val formatter = java.text.SimpleDateFormat("EEE d", java.util.Locale.FRENCH)
+        groupedSlots.map { (date, _) ->
+            runCatching { formatter.format(parser.parse(date)!!) }.getOrDefault(date) to date
+        }
+    }
+    // days = listOf("Mer 05|2026-08-05" to true, ...) — uniquement les jours réels du praticien
+    val days = remember(dayLabels) {
+        dayLabels.map { (label, date) -> "$label|$date" to true }
+    }
+    var selectedDay by remember(days) { mutableStateOf(days.firstOrNull()?.first ?: "") }
+    val selectedDate = selectedDay.substringAfter("|", selectedDay)
 
-    val times = listOf("09:00", "10:30", "14:00", "15:30", "17:00")
-    var selectedTime by remember { mutableStateOf("14:00") }
+    val times = remember(selectedDate, groupedSlots) {
+        groupedSlots.firstOrNull { it.first == selectedDate }?.second ?: emptyList()
+    }
+    var selectedTime by remember(times) { mutableStateOf(times.firstOrNull() ?: "") }
 
     var appointmentType by remember { mutableStateOf("TELECONSULTATION") } // TELECONSULTATION or PRESENTIEL
     var userNote by remember { mutableStateOf("") }
@@ -127,7 +139,7 @@ fun BookingFlowScreen(
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Rounded.Star, contentDescription = null, tint = Terracotta, modifier = Modifier.size(14.dp))
-                        Text(" ${practitioner.rating} • ${practitioner.price}", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = SageDeep)
+                        Text(" ${practitioner.rating} (${practitioner.reviewCount} avis)", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = SageDeep)
                     }
                 }
             }
@@ -262,6 +274,7 @@ fun BookingFlowScreen(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     items(days) { (dayStr, isAvailable) ->
+                        val dayLabel = dayStr.substringBefore("|")
                         val isSelected = selectedDay == dayStr
                         Surface(
                             onClick = { if (isAvailable) selectedDay = dayStr },
@@ -278,12 +291,12 @@ fun BookingFlowScreen(
                                 verticalArrangement = Arrangement.Center
                             ) {
                                 Text(
-                                    text = dayStr.split(" ")[0],
+                                    text = dayLabel.split(" ").getOrElse(0) { dayLabel },
                                     fontSize = 12.sp,
                                     color = if (isSelected) Color.White else TextMuted
                                 )
                                 Text(
-                                    text = dayStr.split(" ")[1],
+                                    text = dayLabel.split(" ").getOrElse(1) { "" },
                                     fontSize = 18.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = if (isSelected) Color.White else TextDark
@@ -304,7 +317,7 @@ fun BookingFlowScreen(
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-                Text("Heures disponibles pour le $selectedDay :", fontWeight = FontWeight.Bold, color = TextDark)
+                Text("Heures disponibles pour le ${selectedDay.substringBefore("|")} :", fontWeight = FontWeight.Bold, color = TextDark)
                 Spacer(modifier = Modifier.height(10.dp))
 
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -371,7 +384,7 @@ fun BookingFlowScreen(
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(selectedMotif, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = TextDark)
                         Spacer(modifier = Modifier.height(4.dp))
-                        Text("📅 $selectedDay à $selectedTime ($appointmentType)", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = SageDeep)
+                        Text("📅 $selectedDate à $selectedTime ($appointmentType)", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = SageDeep)
 
                         Spacer(modifier = Modifier.height(14.dp))
                         Divider(color = SurfaceCardBorder)
@@ -379,7 +392,6 @@ fun BookingFlowScreen(
 
                         Text("Praticien : ${practitioner.name}", fontWeight = FontWeight.Bold)
                         Text("Lieu : ${if (appointmentType == "TELECONSULTATION") "Salon virtuel sécurisé Docta" else practitioner.address}", fontSize = 13.sp, color = TextMuted)
-                        Text("Honoraires : ${practitioner.price}", fontSize = 13.sp, color = SageDeep, fontWeight = FontWeight.Bold)
                     }
                 }
 
@@ -399,7 +411,7 @@ fun BookingFlowScreen(
                     onClick = {
                         onConfirmBooking(
                             practitioner,
-                            selectedDay,
+                            selectedDate,
                             selectedTime,
                             appointmentType,
                             selectedMotif,

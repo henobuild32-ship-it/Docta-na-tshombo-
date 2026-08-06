@@ -32,6 +32,7 @@ data class FirestoreUser(
     @SerialName("is_verified") val isVerified: Boolean = false,
     @SerialName("is_active") val isActive: Boolean = true,
     @SerialName("is_senior_mode") val isSeniorMode: Boolean = false,
+    @SerialName("presentation_seen") val presentationSeen: Boolean = false,
     @SerialName("onesignal_subscription_id") val onesignalSubscriptionId: String = "",
     @SerialName("created_at") val createdAt: String? = null,
     @SerialName("updated_at") val updatedAt: String? = null

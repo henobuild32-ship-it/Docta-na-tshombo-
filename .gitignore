@@ -22,3 +22,12 @@ node_modules/
 # Large logs
 replay_pid*.log
 hs_err_pid*.log
+
+# Do not track signing/keystore backups or stray build artifacts
+*.bak
+*.jks.bak
+/AndroidManifest.xml
+/R.txt
+/classes.jar
+build_log.txt
+

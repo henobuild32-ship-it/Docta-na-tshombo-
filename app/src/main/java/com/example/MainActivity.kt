@@ -1,23 +1,33 @@
 package com.example
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.animation.*
-import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.firebase.FirestoreUser
 import com.example.ui.components.PushNotificationBanner
+import com.example.ui.components.RefreshingOverlay
 import com.example.ui.screens.*
-import com.example.ui.theme.DoctaTheme
+import com.example.ui.theme.*
 import com.example.viewmodel.AppScreen
 import com.example.viewmodel.DoctaViewModel
 
@@ -38,6 +48,9 @@ class MainActivity : ComponentActivity() {
             val isPractitionerPresent by viewModel.isPractitionerPresent.collectAsStateWithLifecycle()
             val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
             val errorMessage by viewModel.errorMessage.collectAsStateWithLifecycle()
+            val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
+            val refreshingMessage by viewModel.refreshingMessage.collectAsStateWithLifecycle()
+            val updateInfo by viewModel.updateInfo.collectAsStateWithLifecycle()
 
             val allPractitioners by viewModel.allPractitioners.collectAsStateWithLifecycle()
             val upcomingAppointments by viewModel.upcomingAppointments.collectAsStateWithLifecycle()
@@ -51,10 +64,45 @@ class MainActivity : ComponentActivity() {
             val isSeniorMode = userProfile?.isSeniorMode ?: false
             val userName = userProfile?.firstName ?: ""
 
+            // Demande la permission de notification (Android 13+) pour que la
+            // notification de bienvenue puisse s'afficher à la fin de l'inscription.
+            val notificationPermissionLauncher = rememberLauncherForActivityResult(
+                contract = ActivityResultContracts.RequestPermission()
+            ) { /* résultat ignoré : la notification reste disponible si refusée */ }
+            LaunchedEffect(Unit) {
+                if (Build.VERSION.SDK_INT >= 33 &&
+                    ContextCompat.checkSelfPermission(
+                        this@MainActivity,
+                        Manifest.permission.POST_NOTIFICATIONS
+                    ) != PackageManager.PERMISSION_GRANTED
+                ) {
+                    notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
+            }
+
             DoctaTheme(isSeniorMode = isSeniorMode) {
                 Box(modifier = Modifier.fillMaxSize()) {
                     Crossfade(targetState = currentScreen, label = "screen_transition") { screen ->
                         when (screen) {
+                            AppScreen.SESSION_LOADING -> {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(SageDeep),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        CircularProgressIndicator(color = Color.White)
+                                        Spacer(modifier = Modifier.height(16.dp))
+                                        Text(
+                                            "Chargement de votre session…",
+                                            color = Color.White,
+                                            fontSize = 14.sp
+                                        )
+                                    }
+                                }
+                            }
+
                             AppScreen.ONBOARDING_LANDING -> {
                                 OnboardingLandingScreen(
                                     onSelectRole = { role ->
@@ -75,7 +123,9 @@ class MainActivity : ComponentActivity() {
                                         viewModel.registerPatient(fName, lName, email, phone, pwd, photoUri)
                                     },
                                     onBackToLanding = { viewModel.navigateTo(AppScreen.ONBOARDING_LANDING) },
-                                    isSeniorMode = isSeniorMode
+                                    isSeniorMode = isSeniorMode,
+                                    isLoading = isLoading,
+                                    errorMessage = errorMessage
                                 )
                             }
 
@@ -85,7 +135,9 @@ class MainActivity : ComponentActivity() {
                                         viewModel.registerPractitioner(docName, spec, education, rpps, photoUri, docUri, email, pwd)
                                     },
                                     onBackToLanding = { viewModel.navigateTo(AppScreen.ONBOARDING_LANDING) },
-                                    isSeniorMode = isSeniorMode
+                                    isSeniorMode = isSeniorMode,
+                                    isLoading = isLoading,
+                                    errorMessage = errorMessage
                                 )
                             }
 
@@ -97,9 +149,17 @@ class MainActivity : ComponentActivity() {
                                     onLoginWithEmail = { email, password ->
                                         viewModel.loginWithEmail(email, password)
                                     },
-                                    onResetPassword = { email -> viewModel.resetPassword(email) },
                                     isLoading = isLoading,
                                     errorMessage = errorMessage
+                                )
+                            }
+
+                            AppScreen.PRESENTATION -> {
+                                AppPresentationScreen(
+                                    role = viewModel.activeUserRole.value,
+                                    userName = userName,
+                                    isSeniorMode = isSeniorMode,
+                                    onComplete = { viewModel.completePresentation() }
                                 )
                             }
 
@@ -113,11 +173,14 @@ class MainActivity : ComponentActivity() {
                                     isSeniorMode = isSeniorMode,
                                     onToggleSeniorMode = { viewModel.toggleSeniorMode() },
                                     onSelectPractitioner = { doc -> viewModel.startBookingFor(doc) },
+                                    onMessagePractitioner = { doc -> viewModel.startConversationWithDoctor(doc) },
                                     onStartTeleconsult = { doc -> viewModel.startTeleconsultationFor(doc) },
                                     onCancelAppointment = { id -> viewModel.cancelAppointment(id) },
                                     onNavigateToReminders = { viewModel.navigateTo(AppScreen.REMINDERS_THERAPEUTIC) },
                                     onNavigateToMessaging = { viewModel.openMessaging() },
-                                    onNavigateToAppointmentsList = { viewModel.navigateTo(AppScreen.PATIENT_APPOINTMENTS) }
+                                    onNavigateToAppointmentsList = { viewModel.navigateTo(AppScreen.PATIENT_APPOINTMENTS) },
+                                    onOpenSettings = { viewModel.navigateTo(AppScreen.SETTINGS) },
+                                    onOpenPresentation = { viewModel.openPresentation() }
                                 )
                             }
 
@@ -151,6 +214,8 @@ class MainActivity : ComponentActivity() {
                                 PractitionerHomeScreen(
                                     doctorName = userName,
                                     profileImageUri = userProfile?.photoUrl,
+                                    specialty = userProfile?.specialty.orEmpty(),
+                                    rppsNumber = userProfile?.rppsNumber.orEmpty(),
                                     onUpdatePhoto = { photoUri -> viewModel.updateUserPhoto(photoUri) },
                                     isPractitionerPresent = isPractitionerPresent,
                                     onTogglePresence = { viewModel.togglePractitionerPresence() },
@@ -158,6 +223,7 @@ class MainActivity : ComponentActivity() {
                                     onStartConsultationForPatient = { appt ->
                                         viewModel.selectAppointment(appt)
                                     },
+                                    onMessagePatient = { appt -> viewModel.startConversationForAppointment(appt) },
                                     onNavigateToMessaging = { viewModel.openMessaging() },
                                     onUpdateAppointment = { id, time, motif -> viewModel.updateAppointment(id, time, motif) },
                                     onUpdateAppointmentStatus = { id, status -> viewModel.updateAppointmentStatus(id, status) },
@@ -169,6 +235,8 @@ class MainActivity : ComponentActivity() {
                                         viewModel.issuePrescriptionForPatient(patientId, patientName, med, dosage, duration, notes)
                                     },
                                     isSeniorMode = isSeniorMode,
+                                    onOpenPresentation = { viewModel.openPresentation() },
+                                    onOpenSettings = { viewModel.navigateTo(AppScreen.SETTINGS) },
                                     onLogout = { viewModel.logout() }
                                 )
                             }
@@ -176,6 +244,7 @@ class MainActivity : ComponentActivity() {
                             AppScreen.PRO_CONSULTATION -> {
                                 PractitionerConsultationScreen(
                                     appointment = selectedAppointment,
+                                    doctorName = userName,
                                     onIssuePrescription = { text, docName ->
                                         viewModel.issueDigitalPrescription(text, docName)
                                     },
@@ -230,6 +299,22 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
 
+                            AppScreen.SETTINGS -> {
+                                SettingsScreen(
+                                    userProfile = userProfile,
+                                    onUpdatePhoto = { photoUri -> viewModel.updateUserPhoto(photoUri) },
+                                    onUpdateInfo = { firstName, lastName, phone ->
+                                        viewModel.updateUserInfo(firstName, lastName, phone)
+                                    },
+                                    onChangePassword = { current, new, done ->
+                                        viewModel.changePassword(current, new, done)
+                                    },
+                                    onLogout = { viewModel.logout() },
+                                    onBack = { viewModel.navigateToMainScreen() },
+                                    isSeniorMode = isSeniorMode
+                                )
+                            }
+
                             AppScreen.ABOUT -> {
                                 AboutScreen(
                                     onBack = { viewModel.navigateTo(AppScreen.PATIENT_MAIN) }
@@ -249,6 +334,44 @@ class MainActivity : ComponentActivity() {
                         onDismiss = { viewModel.clearNotification() },
                         modifier = Modifier.padding(top = 28.dp)
                     )
+
+if (isRefreshing) {
+                        RefreshingOverlay(message = refreshingMessage)
+                    }
+
+                    updateInfo?.let { info ->
+                        AlertDialog(
+                            onDismissRequest = { viewModel.dismissUpdatePrompt() },
+                            title = { Text("Nouvelle version disponible", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold) },
+                            text = {
+                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Text("Une mise à jour est disponible (version ${info.versionName}).")
+                                    if (info.notes.isNotBlank()) {
+                                        Text(info.notes, fontSize = 13.sp, color = Color.Gray)
+                                    }
+                                    Text(
+                                        "Vos données et votre session seront conservées après la mise à jour.",
+                                        fontSize = 13.sp,
+                                        color = Color.Gray
+                                    )
+                                }
+                            },
+                            confirmButton = {
+                                Button(
+                                    onClick = { viewModel.downloadUpdate() },
+                                    colors = ButtonDefaults.buttonColors(containerColor = SageDeep)
+                                ) {
+                                    Text("Mettre à jour")
+                                }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { viewModel.dismissUpdatePrompt() }) {
+                                    Text("Plus tard")
+                                }
+                            },
+                            containerColor = WarmOffWhite
+                        )
+                    }
                 }
             }
         }

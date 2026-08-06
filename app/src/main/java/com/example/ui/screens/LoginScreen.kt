@@ -34,7 +34,6 @@ fun LoginScreen(
     onBackToOnboarding: () -> Unit,
     isSeniorMode: Boolean,
     onLoginWithEmail: ((String, String) -> Unit)? = null,
-    onResetPassword: ((String) -> Unit)? = null,
     isLoading: Boolean = false,
     errorMessage: String? = null
 ) {
@@ -186,16 +185,6 @@ fun LoginScreen(
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    TextButton(onClick = {
-                        if (identifier.isBlank()) localError = "Saisissez votre adresse email."
-                        else onResetPassword?.invoke(identifier.trim())
-                    }) {
-                        Text("Mot de passe oublié ?", color = SageDeep, fontSize = 13.sp)
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
 
                 Button(
                     onClick = {

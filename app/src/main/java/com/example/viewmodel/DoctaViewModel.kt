@@ -1,21 +1,27 @@
 package com.example.viewmodel
 
 import android.app.Application
+import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.db.*
 import com.example.data.firebase.*
 import com.example.data.models.UserRole
+import io.github.jan.supabase.auth.status.SessionStatus
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import com.example.reminders.AppNotificationHelper
 import com.example.reminders.MedicationReminderScheduler
 
 enum class AppScreen {
+    SESSION_LOADING,
     ONBOARDING_LANDING,
     ONBOARDING_PATIENT,
     ONBOARDING_PRO,
     LOGIN,
+    PRESENTATION,
     PATIENT_MAIN,
     BOOKING_FLOW,
     TELECONSULTATION,
@@ -25,6 +31,7 @@ enum class AppScreen {
     CONVERSATIONS,
     REMINDERS_THERAPEUTIC,
     PATIENT_APPOINTMENTS,
+    SETTINGS,
     ABOUT,
     PRESCRIPTION_SHARE
 }
@@ -65,6 +72,29 @@ class DoctaViewModel(application: Application) : AndroidViewModel(application) {
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
 
+    private val _isRefreshing = MutableStateFlow(false)
+    val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
+
+    private val _refreshingMessage = MutableStateFlow("Actualisation en cours…")
+    val refreshingMessage: StateFlow<String> = _refreshingMessage.asStateFlow()
+
+    private val _updateInfo = MutableStateFlow<com.example.data.AppUpdateManager.UpdateInfo?>(null)
+    val updateInfo: StateFlow<com.example.data.AppUpdateManager.UpdateInfo?> = _updateInfo.asStateFlow()
+
+    private val _isRestoringSession = MutableStateFlow(true)
+    val isRestoringSession: StateFlow<Boolean> = _isRestoringSession.asStateFlow()
+
+    private val prefs: android.content.SharedPreferences by lazy {
+        getApplication<Application>().getSharedPreferences("docta_prefs", Context.MODE_PRIVATE)
+    }
+
+    private fun isOnboardingCompleted(): Boolean =
+        prefs.getBoolean("onboarding_completed", false)
+
+    private fun markOnboardingCompleted() {
+        prefs.edit().putBoolean("onboarding_completed", true).apply()
+    }
+
     // Firebase User Profile
     private val _userProfile = MutableStateFlow<FirestoreUser?>(null)
     val userProfile: StateFlow<FirestoreUser?> = _userProfile.asStateFlow()
@@ -96,22 +126,69 @@ class DoctaViewModel(application: Application) : AndroidViewModel(application) {
 
     // Auth state listener
     init {
+        _currentScreen.value = AppScreen.SESSION_LOADING
         viewModelScope.launch {
-            authRepo.authStateFlow().collect { uid ->
-                if (uid != null) {
-                    loadUserProfile(uid)
-                } else {
-                    sessionJobs.forEach { it.cancel() }
-                    sessionJobs = emptyList()
-                    messagingJob?.cancel()
-                    messagingJob = null
-                    _userProfile.value = null
-                    _selectedAppointment.value = null
-                    _chatMessages.value = emptyList()
-                    _currentScreen.value = AppScreen.ONBOARDING_LANDING
+            authRepo.sessionStatusFlow().collect { status ->
+                when (status) {
+                    SessionStatus.Initializing -> {
+                        _isRestoringSession.value = true
+                        _currentScreen.value = AppScreen.SESSION_LOADING
+                    }
+                    is SessionStatus.Authenticated -> {
+                        val uid = status.session.user?.id
+                        _isRestoringSession.value = false
+                        if (uid != null) {
+                            loadUserProfile(uid)
+                        } else {
+                            finishLogout()
+                        }
+                    }
+                    is SessionStatus.NotAuthenticated,
+                    is SessionStatus.RefreshFailure -> {
+                        _isRestoringSession.value = false
+                        finishLogout()
+                    }
                 }
             }
         }
+        checkForAppUpdate()
+    }
+
+    /**
+     * Vérifie (au démarrage et régulièrement) si une nouvelle version de
+     * l'application est disponible. Si oui, expose l'info pour que l'UI
+     * propose le téléchargement/installation de la mise à jour.
+     */
+    fun checkForAppUpdate() {
+        viewModelScope.launch {
+            val info = com.example.data.AppUpdateManager.checkForUpdate(getApplication())
+            if (info != null) {
+                _updateInfo.value = info
+            }
+        }
+    }
+
+    fun dismissUpdatePrompt() {
+        _updateInfo.value = null
+    }
+
+    fun downloadUpdate() {
+        val info = _updateInfo.value ?: return
+        com.example.data.AppUpdateManager.downloadAndInstall(getApplication(), info)
+        _updateInfo.value = null
+    }
+
+    /** Rétablit l'écran de destination quand on n'est pas connecté (onboarding vs login). */
+    private fun finishLogout() {
+        sessionJobs.forEach { it.cancel() }
+        sessionJobs = emptyList()
+        messagingJob?.cancel()
+        messagingJob = null
+        _userProfile.value = null
+        _selectedAppointment.value = null
+        _chatMessages.value = emptyList()
+        _currentScreen.value =
+            if (isOnboardingCompleted()) AppScreen.LOGIN else AppScreen.ONBOARDING_LANDING
     }
 
     private fun loadUserProfile(uid: String) {
@@ -124,9 +201,14 @@ class DoctaViewModel(application: Application) : AndroidViewModel(application) {
                     else -> UserRole.PATIENT
                 }
                 // Auto-navigate to main screen if already logged in
-                if (_currentScreen.value == AppScreen.ONBOARDING_LANDING ||
+                if (_currentScreen.value == AppScreen.SESSION_LOADING ||
+                    _currentScreen.value == AppScreen.ONBOARDING_LANDING ||
                     _currentScreen.value == AppScreen.LOGIN) {
-                    navigateToMainScreen()
+                    if (profile.presentationSeen) {
+                        navigateToMainScreen()
+                    } else {
+                        _currentScreen.value = AppScreen.PRESENTATION
+                    }
                 }
                 sessionJobs.forEach { it.cancel() }
                 observeUserData(uid)
@@ -190,6 +272,22 @@ class DoctaViewModel(application: Application) : AndroidViewModel(application) {
         _currentScreen.value = AppScreen.CONVERSATIONS
     }
 
+    fun startConversationWithDoctor(doctor: FirestoreDoctor) {
+        viewModelScope.launch {
+            val uid = authRepo.currentUserId ?: return@launch
+            val profile = _userProfile.value ?: return@launch
+            _selectedPractitioner.value = doctor
+            val conversationId = firestoreRepo.ensureDirectConversation(
+                uid, profile.displayName, doctor.id, doctor.name
+            ).getOrElse { error ->
+                showPushNotification("Erreur de conversation : ${error.message}")
+                return@launch
+            }
+            observeMessages(conversationId)
+            _currentScreen.value = AppScreen.MESSAGING
+        }
+    }
+
     fun startConversationForAppointment(appointment: FirestoreAppointment) {
         viewModelScope.launch {
             val uid = authRepo.currentUserId ?: return@launch
@@ -228,7 +326,7 @@ class DoctaViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    private fun navigateToMainScreen() {
+    fun navigateToMainScreen() {
         _currentScreen.value = if (_activeUserRole.value == UserRole.PRATICIEN) {
             AppScreen.PRO_MAIN
         } else {
@@ -244,8 +342,12 @@ class DoctaViewModel(application: Application) : AndroidViewModel(application) {
             val uid = authRepo.currentUserId ?: return@launch
             authRepo.updateUserProfile(uid, mapOf("role" to role.name.lowercase()))
             _userProfile.value = _userProfile.value?.copy(role = role.name.lowercase())
+            if (_userProfile.value?.presentationSeen != true) {
+                _currentScreen.value = AppScreen.PRESENTATION
+            } else {
+                navigateToMainScreen()
+            }
         }
-        navigateToMainScreen()
     }
 
     fun registerPatient(
@@ -268,6 +370,13 @@ class DoctaViewModel(application: Application) : AndroidViewModel(application) {
             )
             result.fold(
                 onSuccess = { user ->
+                    if (authRepo.currentUserId == null) {
+                        // Compte créé mais session non établie (confirmation email requise)
+                        // => pas de blocage : on reste sur l'écran de connexion avec un message clair.
+                        _errorMessage.value = "Compte créé. Vérifiez votre email pour activer votre compte, puis connectez-vous."
+                        _isLoading.value = false
+                        return@fold
+                    }
                     // Upload photo if provided
                     if (photoUri != null) {
                         storageRepo.uploadProfilePhoto(user.id, Uri.parse(photoUri)).fold(
@@ -282,12 +391,17 @@ class DoctaViewModel(application: Application) : AndroidViewModel(application) {
                         authRepo.updateFcmToken(user.id, token)
                     }
                     showPushNotification("Bienvenue $firstName ! Votre compte patient est créé.")
+                    AppNotificationHelper.show(
+                        getApplication(),
+                        "Bienvenue sur Docta na Tshombo",
+                        "Bienvenue $firstName ! Votre compte patient est créé. Commencez à explorer l'application."
+                    )
                     _activeUserRole.value = UserRole.PATIENT
-                    _currentScreen.value = AppScreen.PATIENT_MAIN
+                    markOnboardingCompleted()
+                    _currentScreen.value = AppScreen.PRESENTATION
                 },
                 onFailure = { error ->
                     _errorMessage.value = error.message ?: "Erreur lors de l'inscription"
-                    showPushNotification("Erreur: ${error.message}")
                 }
             )
             _isLoading.value = false
@@ -316,6 +430,11 @@ class DoctaViewModel(application: Application) : AndroidViewModel(application) {
             )
             result.fold(
                 onSuccess = { user ->
+                    if (authRepo.currentUserId == null) {
+                        _errorMessage.value = "Compte créé. Vérifiez votre email pour activer votre compte, puis connectez-vous."
+                        _isLoading.value = false
+                        return@fold
+                    }
                     // Create doctor profile
                     val doctor = FirestoreDoctor(
                         userId = user.id,
@@ -357,12 +476,17 @@ class DoctaViewModel(application: Application) : AndroidViewModel(application) {
                     }
 
                     showPushNotification("Bienvenue $doctorName ! Votre profil praticien est enregistré.")
+                    AppNotificationHelper.show(
+                        getApplication(),
+                        "Bienvenue sur Docta na Tshombo",
+                        "Bienvenue $doctorName ! Votre profil praticien est enregistré. Commencez à gérer votre cabinet."
+                    )
                     _activeUserRole.value = UserRole.PRATICIEN
-                    _currentScreen.value = AppScreen.PRO_MAIN
+                    markOnboardingCompleted()
+                    _currentScreen.value = AppScreen.PRESENTATION
                 },
                 onFailure = { error ->
                     _errorMessage.value = error.message ?: "Erreur lors de l'inscription"
-                    showPushNotification("Erreur: ${error.message}")
                 }
             )
             _isLoading.value = false
@@ -375,11 +499,11 @@ class DoctaViewModel(application: Application) : AndroidViewModel(application) {
             val result = authRepo.signInWithEmail(email, password)
             result.fold(
                 onSuccess = { user ->
+                    markOnboardingCompleted()
                     showPushNotification("Connexion réussie !")
                 },
                 onFailure = { error ->
-                    _errorMessage.value = error.message ?: "Erreur de connexion"
-                    showPushNotification("Erreur: ${error.message}")
+                    _errorMessage.value = error.message ?: "Identifiants incorrects"
                 }
             )
             _isLoading.value = false
@@ -390,17 +514,8 @@ class DoctaViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             authRepo.signOut()
             _userProfile.value = null
-            _currentScreen.value = AppScreen.ONBOARDING_LANDING
+            // La navigation est gérée par sessionStatusFlow (NotAuthenticated -> finishLogout).
             showPushNotification("Déconnexion réussie")
-        }
-    }
-
-    fun resetPassword(email: String) {
-        viewModelScope.launch {
-            authRepo.resetPassword(email).fold(
-                onSuccess = { showPushNotification("Email de réinitialisation envoyé") },
-                onFailure = { showPushNotification("Erreur: ${it.message}") }
-            )
         }
     }
 
@@ -423,6 +538,55 @@ class DoctaViewModel(application: Application) : AndroidViewModel(application) {
                     showPushNotification("Erreur: ${error.message}")
                 }
             )
+        }
+    }
+
+    /** Met à jour les informations du profil (prénom, nom, téléphone). */
+    fun updateUserInfo(firstName: String, lastName: String, phone: String) {
+        viewModelScope.launch {
+            val uid = authRepo.currentUserId ?: return@launch
+            _isLoading.value = true
+            authRepo.updateUserProfile(
+                uid,
+                mapOf("firstName" to firstName.trim(), "lastName" to lastName.trim(), "phone" to phone.trim())
+            ).fold(
+                onSuccess = {
+                    _userProfile.value = _userProfile.value?.copy(
+                        firstName = firstName.trim(),
+                        lastName = lastName.trim(),
+                        phone = phone.trim()
+                    )
+                    triggerRefreshFeedback("Actualisation en cours… Mise à jour de votre profil.")
+                    showPushNotification("Profil mis à jour avec succès.")
+                },
+                onFailure = { error ->
+                    showPushNotification("Erreur: ${error.message}")
+                }
+            )
+            _isLoading.value = false
+        }
+    }
+
+    /** Change le mot de passe du compte. */
+    fun changePassword(currentPassword: String, newPassword: String, onDone: (Boolean) -> Unit = {}) {
+        viewModelScope.launch {
+            if (newPassword.length < 6) {
+                showPushNotification("Le nouveau mot de passe doit contenir au moins 6 caractères.")
+                onDone(false)
+                return@launch
+            }
+            _isLoading.value = true
+            authRepo.updatePassword(newPassword).fold(
+                onSuccess = {
+                    showPushNotification("Mot de passe modifié avec succès.")
+                    onDone(true)
+                },
+                onFailure = { error ->
+                    showPushNotification("Erreur: ${error.message}")
+                    onDone(false)
+                }
+            )
+            _isLoading.value = false
         }
     }
 
@@ -459,6 +623,21 @@ class DoctaViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun completePresentation() {
+        viewModelScope.launch {
+            val uid = authRepo.currentUserId ?: return@launch
+            if (_userProfile.value?.presentationSeen != true) {
+                authRepo.updateUserProfile(uid, mapOf("presentationSeen" to true))
+                _userProfile.value = _userProfile.value?.copy(presentationSeen = true)
+            }
+            navigateToMainScreen()
+        }
+    }
+
+    fun openPresentation() {
+        _currentScreen.value = AppScreen.PRESENTATION
+    }
+
     // ========== APPOINTMENTS ==========
 
     fun confirmAppointment(
@@ -491,6 +670,7 @@ class DoctaViewModel(application: Application) : AndroidViewModel(application) {
 
             firestoreRepo.createAppointment(appointment).fold(
                 onSuccess = {
+                    triggerRefreshFeedback("Actualisation en cours… Enregistrement de votre rendez-vous.")
                     showPushNotification("Rendez-vous confirmé avec ${doctor.name} le $date à $time")
                 },
                 onFailure = { error ->
@@ -546,7 +726,10 @@ class DoctaViewModel(application: Application) : AndroidViewModel(application) {
                 status = FirestoreAppointment.STATUS_CONFIRMED
             )
             firestoreRepo.createAppointment(appointment).fold(
-                onSuccess = { showPushNotification("Rendez-vous créé et transmis au patient") },
+                onSuccess = {
+                    triggerRefreshFeedback("Actualisation en cours… Création du rendez-vous.")
+                    showPushNotification("Rendez-vous créé et transmis au patient")
+                },
                 onFailure = { showPushNotification("Erreur : ${it.message}") }
             )
         }
@@ -633,6 +816,7 @@ class DoctaViewModel(application: Application) : AndroidViewModel(application) {
             firestoreRepo.createReminder(reminder).fold(
                 onSuccess = {
                     MedicationReminderScheduler.schedule(getApplication(), reminder)
+                    triggerRefreshFeedback("Actualisation en cours… Programmation de votre rappel.")
                     showPushNotification("Rappel de traitement programmé pour $name ($time)")
                 },
                 onFailure = { showPushNotification("Erreur: ${it.message}") }
@@ -714,6 +898,20 @@ class DoctaViewModel(application: Application) : AndroidViewModel(application) {
 
     fun showPushNotification(msg: String) {
         _notificationMessage.value = msg
+    }
+
+    /**
+     * Affiche le bandeau « Actualisation en cours… » pendant 2 à 3 secondes
+     * après la création d'une donnée (RDV, rappel…) afin que l'utilisateur
+     * voie clairement que les données réelles sont en cours de rafraîchissement.
+     */
+    fun triggerRefreshFeedback(message: String) {
+        _refreshingMessage.value = message
+        _isRefreshing.value = true
+        viewModelScope.launch {
+            delay(2800)
+            _isRefreshing.value = false
+        }
     }
 
     fun clearNotification() {

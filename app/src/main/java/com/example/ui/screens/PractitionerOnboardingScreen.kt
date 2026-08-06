@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -57,7 +58,9 @@ fun PractitionerOnboardingWizard(
         password: String
     ) -> Unit,
     onBackToLanding: () -> Unit,
-    isSeniorMode: Boolean
+    isSeniorMode: Boolean,
+    isLoading: Boolean = false,
+    errorMessage: String? = null
 ) {
     var step by remember { mutableIntStateOf(1) }
 
@@ -558,6 +561,17 @@ fun PractitionerOnboardingWizard(
 
                 Spacer(modifier = Modifier.height(30.dp))
 
+                if (errorMessage != null) {
+                    Text(
+                        text = errorMessage,
+                        color = MaterialTheme.colorScheme.error,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
+                    )
+                }
+
                 Button(
                     onClick = {
                         val education = DoctorEducation(
@@ -573,7 +587,7 @@ fun PractitionerOnboardingWizard(
                             photoUri, documentUri, email, password
                         )
                     },
-                    enabled = doctorName.isNotBlank() && specialty.isNotBlank() && email.isNotBlank() && password.length >= 6,
+                    enabled = !isLoading && doctorName.isNotBlank() && specialty.isNotBlank() && email.isNotBlank() && password.length >= 6,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp)
@@ -581,7 +595,11 @@ fun PractitionerOnboardingWizard(
                     shape = RoundedCornerShape(28.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = SageDeep)
                 ) {
-                    Text("Soumettre pour vérification", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    if (isLoading) {
+                        CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+                    } else {
+                        Text("Soumettre pour vérification", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    }
                 }
             }
         }

@@ -1,6 +1,5 @@
 package com.example.ui.theme
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
@@ -92,7 +91,7 @@ private val iOS26DarkColorScheme = darkColorScheme(
 
 @Composable
 fun DoctaTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    darkTheme: Boolean = false,
     isSeniorMode: Boolean = false,
     content: @Composable () -> Unit
 ) {

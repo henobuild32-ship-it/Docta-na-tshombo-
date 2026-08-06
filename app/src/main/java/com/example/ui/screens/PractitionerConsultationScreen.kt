@@ -26,6 +26,7 @@ import com.example.ui.theme.*
 @Composable
 fun PractitionerConsultationScreen(
     appointment: FirestoreAppointment?,
+    doctorName: String,
     onIssuePrescription: (String, String) -> Unit,
     onBack: () -> Unit,
     isSeniorMode: Boolean
@@ -172,7 +173,7 @@ fun PractitionerConsultationScreen(
                 Button(
                     onClick = {
                         val fullPrescription = "1. $medicineName ($dosage, pendant $duration)\nNote: $prescriptionNote"
-                        onIssuePrescription(fullPrescription, "Dr. Amina Kalala")
+                        onIssuePrescription(fullPrescription, doctorName)
                         isPrescriptionSigned = true
                     },
                     modifier = Modifier

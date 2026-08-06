@@ -42,11 +42,14 @@ fun PatientHomeScreen(
     isSeniorMode: Boolean,
     onToggleSeniorMode: () -> Unit,
     onSelectPractitioner: (FirestoreDoctor) -> Unit,
+    onMessagePractitioner: (FirestoreDoctor) -> Unit,
     onStartTeleconsult: (FirestoreDoctor) -> Unit,
     onCancelAppointment: (String) -> Unit,
     onNavigateToReminders: () -> Unit,
     onNavigateToMessaging: () -> Unit,
-    onNavigateToAppointmentsList: () -> Unit
+    onNavigateToAppointmentsList: () -> Unit,
+    onOpenSettings: (() -> Unit)? = null,
+    onOpenPresentation: (() -> Unit)? = null
 ) {
     var searchQuery by remember { mutableStateOf("") }
     var selectedFilterChip by remember { mutableStateOf("Tous") }
@@ -86,7 +89,9 @@ fun PatientHomeScreen(
                 isSeniorMode = isSeniorMode,
                 onToggleSeniorMode = onToggleSeniorMode,
                 profileImageUri = profileImageUri,
-                onAvatarClick = { photoLauncher.launch("image/*") }
+                onAvatarClick = { photoLauncher.launch("image/*") },
+                onOpenPresentation = onOpenPresentation,
+                onOpenSettings = onOpenSettings
             )
         },
         bottomBar = {
@@ -357,8 +362,8 @@ fun PatientHomeScreen(
                                     }
                                     Spacer(modifier = Modifier.width(12.dp))
                                     Column {
-                                        Text(appt.doctorName, fontWeight = FontWeight.Bold, fontSize = 15.sp, maxLines = 1)
-                                        Text(appt.doctorSpecialty, fontSize = 12.sp, color = TextMuted)
+                                        Text(appt.doctorName, fontWeight = FontWeight.Bold, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                        Text(appt.doctorSpecialty, fontSize = 12.sp, color = TextMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                     }
                                 }
 
@@ -397,19 +402,7 @@ fun PatientHomeScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-    // 3. Section "Vos praticiens favoris"
-    Text(
-        text = "Médecins disponibles",
-        style = if (isSeniorMode) MaterialTheme.typography.titleLarge else MaterialTheme.typography.titleMedium,
-        fontWeight = FontWeight.Bold,
-        color = TextDark
-    )
-
-    Spacer(modifier = Modifier.height(10.dp))
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // 4. Section "Découvrir la téléconsultation" (Banner)
+            // 3. Section "Découvrir la téléconsultation" (Banner)
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -491,9 +484,21 @@ fun PatientHomeScreen(
 
                                     Spacer(modifier = Modifier.width(12.dp))
 
-                                    Column {
-                                        Text(doc.name, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                                        Text(doc.specialty, fontSize = 12.sp, color = TextMuted)
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            doc.name,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 16.sp,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                        Text(
+                                            doc.specialty,
+                                            fontSize = 12.sp,
+                                            color = TextMuted,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
                                         if (doc.educationSummary.isNotBlank()) {
                                             Text(
                                                 doc.educationSummary,
@@ -514,8 +519,13 @@ fun PatientHomeScreen(
 
                             Spacer(modifier = Modifier.height(10.dp))
 
-                            Text("📍 ${doc.address}", fontSize = 12.sp, color = TextDark)
-                            Text("Tarif : ${doc.price}", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = SageDeep)
+                            Text(
+                                "📍 ${doc.address}",
+                                fontSize = 12.sp,
+                                color = TextDark,
+                                maxLines = 2,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                            )
 
                             Spacer(modifier = Modifier.height(10.dp))
 
@@ -535,12 +545,28 @@ fun PatientHomeScreen(
                                 Spacer(modifier = Modifier.width(8.dp))
 
                                 OutlinedButton(
-                                    onClick = { expandedDoctorId = if (isExpanded) null else doc.id },
+                                    onClick = { onMessagePractitioner(doc) },
                                     modifier = Modifier.height(42.dp),
                                     shape = RoundedCornerShape(16.dp),
-                                    border = BorderStroke(1.dp, SageDeep)
+                                    border = BorderStroke(1.dp, SageMedium)
                                 ) {
-                                    Text(if (isExpanded) "Moins ▲" else "Créneaux ▼", fontSize = 12.sp, color = SageDeep)
+                                    Icon(Icons.Outlined.ChatBubbleOutline, contentDescription = null, modifier = Modifier.size(16.dp), tint = SageDeep)
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Message", fontSize = 12.sp, color = SageDeep)
+                                }
+                            }
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                TextButton(onClick = { expandedDoctorId = if (isExpanded) null else doc.id }) {
+                                    Text(
+                                        if (isExpanded) "Masquer les créneaux ▲" else "Voir les créneaux ▼",
+                                        fontSize = 12.sp,
+                                        color = SageDeep,
+                                        fontWeight = FontWeight.Bold
+                                    )
                                 }
                             }
 
@@ -556,20 +582,31 @@ fun PatientHomeScreen(
                                     Text("Prochains créneaux disponibles :", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                                     Spacer(modifier = Modifier.height(8.dp))
                                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        listOf("09:00", "11:30", "14:30", "16:00").forEach { time ->
-                                            Surface(
-                                                onClick = { onSelectPractitioner(doc) },
-                                                shape = RoundedCornerShape(12.dp),
-                                                color = WaterGreen,
-                                                border = BorderStroke(1.dp, SageLight)
-                                            ) {
-                                                Text(
-                                                    text = time,
-                                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                                                    fontSize = 12.sp,
-                                                    fontWeight = FontWeight.Bold,
-                                                    color = SageDeep
-                                                )
+                                        val slots = doc.availableSlots.mapNotNull { slot ->
+                                            slot.split(" ").getOrNull(1)
+                                        }.take(4)
+                                        if (slots.isEmpty()) {
+                                            Text(
+                                                text = "Aucun créneau publié pour le moment",
+                                                fontSize = 12.sp,
+                                                color = TextMuted
+                                            )
+                                        } else {
+                                            slots.forEach { time ->
+                                                Surface(
+                                                    onClick = { onSelectPractitioner(doc) },
+                                                    shape = RoundedCornerShape(12.dp),
+                                                    color = WaterGreen,
+                                                    border = BorderStroke(1.dp, SageLight)
+                                                ) {
+                                                    Text(
+                                                        text = time,
+                                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                                        fontSize = 12.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = SageDeep
+                                                    )
+                                                }
                                             }
                                         }
                                     }

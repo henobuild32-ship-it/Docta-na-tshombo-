@@ -176,6 +176,51 @@ fun PushNotificationBanner(
 }
 
 /**
+ * Bandeau de superposition « Actualisation en cours… » affiché pendant la
+ * synchronisation des données réelles après une action de création.
+ */
+@Composable
+fun RefreshingOverlay(message: String, modifier: Modifier = Modifier) {
+    AnimatedVisibility(
+        visible = true,
+        enter = fadeIn() + slideInVertically(initialOffsetY = { it / 2 }),
+        exit = fadeOut(),
+        modifier = modifier
+    ) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp, vertical = 8.dp)
+                .shadow(16.dp, RoundedCornerShape(24.dp)),
+            shape = RoundedCornerShape(24.dp),
+            color = SageDeep,
+            contentColor = Color.White
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(22.dp),
+                    color = WaterGreenLight,
+                    strokeWidth = 2.5.dp
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = message,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.White
+                )
+            }
+        }
+    }
+}
+
+/**
  * Modifier Extensions for iOS 26 Liquid Glass Glassmorphism
  */
 fun Modifier.liquidGlass(
@@ -596,6 +641,8 @@ fun OrganicHeader(
     onToggleSeniorMode: () -> Unit,
     onAvatarClick: () -> Unit,
     profileImageUri: String? = null,
+    onOpenPresentation: (() -> Unit)? = null,
+    onOpenSettings: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     Surface(
@@ -637,6 +684,40 @@ fun OrganicHeader(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
+                // App presentation / discovery button
+                if (onOpenPresentation != null) {
+                    Surface(
+                        onClick = onOpenPresentation,
+                        shape = CircleShape,
+                        color = WaterGreen,
+                        border = BorderStroke(1.dp, SageDeep.copy(alpha = 0.3f))
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Info,
+                            contentDescription = "Présentation de l'application",
+                            tint = SageDeep,
+                            modifier = Modifier.padding(9.dp).size(20.dp)
+                        )
+                    }
+                }
+
+                // Settings / Profile button
+                if (onOpenSettings != null) {
+                    Surface(
+                        onClick = onOpenSettings,
+                        shape = CircleShape,
+                        color = WaterGreen,
+                        border = BorderStroke(1.dp, SageDeep.copy(alpha = 0.3f))
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Settings,
+                            contentDescription = "Paramètres",
+                            tint = SageDeep,
+                            modifier = Modifier.padding(9.dp).size(20.dp)
+                        )
+                    }
+                }
+
                 // Senior accessibility mode toggle pill
                 Surface(
                     onClick = onToggleSeniorMode,

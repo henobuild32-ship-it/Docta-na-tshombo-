@@ -184,14 +184,17 @@ fun OnboardingLandingScreen(
 /**
  * Patient Registration Wizard (3 steps)
  * Step 1: Identité
- * Step 2: Contact & Sécurité (with PIN modal & strength pebbles)
+ * Step 2: Contact & Sécurité (avec indicateur de force du mot de passe)
  * Step 3: Finalisation (with interactive policy toggles)
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PatientOnboardingWizard(
     onComplete: (String, String, String, String, String, String?) -> Unit,
     onBackToLanding: () -> Unit,
-    isSeniorMode: Boolean
+    isSeniorMode: Boolean,
+    isLoading: Boolean = false,
+    errorMessage: String? = null
 ) {
     var step by remember { mutableIntStateOf(1) }
 
@@ -199,6 +202,7 @@ fun PatientOnboardingWizard(
     var firstName by remember { mutableStateOf("") }
     var lastName by remember { mutableStateOf("") }
     var birthDate by remember { mutableStateOf("") }
+    var showBirthDatePicker by remember { mutableStateOf(false) }
     var email by remember { mutableStateOf("") }
     var phone by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -212,10 +216,6 @@ fun PatientOnboardingWizard(
             photoUri = uri.toString()
         }
     }
-
-    var showPinModal by remember { mutableStateOf(false) }
-    var pinCode by remember { mutableStateOf("") }
-    var isPhoneVerified by remember { mutableStateOf(false) }
 
     var acceptTerms by remember { mutableStateOf(true) }
     var acceptPrivacy by remember { mutableStateOf(true) }
@@ -379,20 +379,30 @@ fun PatientOnboardingWizard(
 
                 Spacer(modifier = Modifier.height(14.dp))
 
-                OutlinedTextField(
-                    value = birthDate,
-                    onValueChange = { birthDate = it },
-                    label = { Text("Date de naissance (JJ/MM/AAAA)") },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = SageDeep,
-                        unfocusedBorderColor = SurfaceCardBorder
-                    ),
-                    trailingIcon = {
-                        Icon(Icons.Outlined.CalendarToday, contentDescription = null, tint = SageMedium)
-                    }
-                )
+                // Date de naissance — sélecteur jour/mois/année (JJ/MM/AAAA)
+                Box {
+                    OutlinedTextField(
+                        value = birthDate,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Date de naissance (JJ/MM/AAAA)") },
+                        placeholder = { Text("Jour / Mois / Année") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        trailingIcon = {
+                            Icon(Icons.Outlined.CalendarToday, contentDescription = null, tint = SageMedium)
+                        },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = SageDeep,
+                            unfocusedBorderColor = SurfaceCardBorder
+                        )
+                    )
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .clickable { showBirthDatePicker = true }
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(30.dp))
 
@@ -433,34 +443,17 @@ fun PatientOnboardingWizard(
 
                 Spacer(modifier = Modifier.height(14.dp))
 
-                Row(
+                OutlinedTextField(
+                    value = phone,
+                    onValueChange = { phone = it },
+                    label = { Text("Téléphone mobile") },
                     modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    OutlinedTextField(
-                        value = phone,
-                        onValueChange = { phone = it },
-                        label = { Text("Téléphone mobile") },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = SageDeep,
-                            unfocusedBorderColor = SurfaceCardBorder
-                        )
+                    shape = RoundedCornerShape(16.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = SageDeep,
+                        unfocusedBorderColor = SurfaceCardBorder
                     )
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    Button(
-                        onClick = { showPinModal = true },
-                        shape = RoundedCornerShape(16.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (isPhoneVerified) SageMedium else Terracotta
-                        )
-                    ) {
-                        Text(if (isPhoneVerified) "Vérifié ✓" else "Vérifier")
-                    }
-                }
+                )
 
                 Spacer(modifier = Modifier.height(14.dp))
 
@@ -612,9 +605,20 @@ fun PatientOnboardingWizard(
 
                     Spacer(modifier = Modifier.height(24.dp))
 
+                    if (errorMessage != null) {
+                        Text(
+                            text = errorMessage,
+                            color = MaterialTheme.colorScheme.error,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
+                        )
+                    }
+
                     Button(
                         onClick = { onComplete(firstName, lastName, email, phone, password, photoUri) },
-                        enabled = acceptTerms && acceptPrivacy && password.length >= 6,
+                        enabled = !isLoading && acceptTerms && acceptPrivacy && password.length >= 6,
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(if (isSeniorMode) 64.dp else 56.dp)
@@ -625,54 +629,47 @@ fun PatientOnboardingWizard(
                             contentColor = Color.White
                         )
                     ) {
-                        Text(
-                            text = "Ouvrir mon Docta na Tshombo",
-                            fontSize = if (isSeniorMode) 20.sp else 16.sp,
-                            fontWeight = FontWeight.Bold
-                        )
+                        if (isLoading) {
+                            CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+                        } else {
+                            Text(
+                                text = "Ouvrir mon Docta na Tshombo",
+                                fontSize = if (isSeniorMode) 20.sp else 16.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
                 }
             }
         }
     }
 
-    // PIN Verification Modal
-    if (showPinModal) {
-        AlertDialog(
-            onDismissRequest = { showPinModal = false },
-            title = {
-                Text("Code de vérification", fontWeight = FontWeight.Bold)
-            },
-            text = {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Saisissez le code SMS reçu au $phone")
-                    Spacer(modifier = Modifier.height(16.dp))
-                    OutlinedTextField(
-                        value = pinCode,
-                        onValueChange = { if (it.length <= 6) pinCode = it },
-                        label = { Text("Code à 6 chiffres") },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp)
-                    )
-                }
-            },
+    // Date de naissance — sélecteur calendrier jour / mois / année
+    if (showBirthDatePicker) {
+        val datePickerState = rememberDatePickerState()
+        DatePickerDialog(
+            onDismissRequest = { showBirthDatePicker = false },
             confirmButton = {
-                Button(
-                    onClick = {
-                        isPhoneVerified = true
-                        showPinModal = false
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = SageDeep)
-                ) {
-                    Text("Valider")
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let { millis ->
+                        val cal = java.util.Calendar.getInstance().apply { timeInMillis = millis }
+                        val day = cal.get(java.util.Calendar.DAY_OF_MONTH).toString().padStart(2, '0')
+                        val month = (cal.get(java.util.Calendar.MONTH) + 1).toString().padStart(2, '0')
+                        val year = cal.get(java.util.Calendar.YEAR).toString()
+                        birthDate = "$day/$month/$year"
+                    }
+                    showBirthDatePicker = false
+                }) {
+                    Text("OK", fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showPinModal = false }) {
+                TextButton(onClick = { showBirthDatePicker = false }) {
                     Text("Annuler")
                 }
-            },
-            containerColor = WarmOffWhite
-        )
+            }
+        ) {
+            DatePicker(state = datePickerState, showModeToggle = false)
+        }
     }
 }

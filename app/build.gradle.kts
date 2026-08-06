@@ -43,22 +43,25 @@ android {
     applicationId = "com.doctanatshom.com"
     minSdk = 24
     targetSdk = 36
-    versionCode = 2
-    versionName = "1.1"
+    versionCode = 3
+    versionName = "1.2"
     buildConfigField("String", "ONESIGNAL_APP_ID", "\"${esc(envOr("ONESIGNAL_APP_ID", ""))}\"")
     buildConfigField("String", "SUPABASE_URL", "\"${esc(envOr("SUPABASE_URL", ""))}\"")
     buildConfigField("String", "SUPABASE_ANON_KEY", "\"${esc(envOr("SUPABASE_ANON_KEY", ""))}\"")
     buildConfigField("String", "SUPABASE_BUCKET_NAME", "\"${esc(envOr("SUPABASE_BUCKET_NAME", "docta-na-tshombo"))}\"")
+    buildConfigField("String", "VERSION_CHECK_URL", "\"${esc(envOr("VERSION_CHECK_URL", "https://henobuild32-ship-it.github.io/Docta-na-tshombo-/version.json"))}\"")
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
   signingConfigs {
     create("release") {
-      val keystorePath = System.getenv("KEYSTORE_PATH") ?: "${rootDir}/my-upload-key.jks"
-      storeFile = file(keystorePath)
-      storePassword = System.getenv("STORE_PASSWORD") ?: ""
+      val keystorePath = System.getenv("KEYSTORE_PATH")
+        ?: envOr("KEYSTORE_PATH", "${rootDir}/my-upload-key.jks")
+      val ksFile = file(keystorePath)
+      storeFile = if (ksFile.isAbsolute) ksFile else file("${rootDir}/${keystorePath}")
+      storePassword = System.getenv("STORE_PASSWORD") ?: envOr("STORE_PASSWORD", "")
       keyAlias = "upload"
-      keyPassword = System.getenv("KEY_PASSWORD") ?: ""
+      keyPassword = System.getenv("KEY_PASSWORD") ?: envOr("KEY_PASSWORD", "")
     }
   }
 
